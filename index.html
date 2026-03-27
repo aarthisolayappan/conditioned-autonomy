@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRICK BREAKER</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-weight: 400; }
+
+    @font-face {
+      font-family: 'GT Planar';
+      src: url('GT-Planar-Regular-Trial.otf') format('opentype');
+    }
+
+    body {
+      font-family: 'GT Planar', sans-serif;
+      background: #fff;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ══════════════════════════════════════════
+       LEFT COLUMN
+    ══════════════════════════════════════════ */
+    #leftCol {
+      width: 47.5rem;
+      min-width: 47.5rem;
+      height: 100vh;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    /* ── PROGRESS BAR — flush top, full left-col width ── */
+    #progressBarWrap {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 20;
+    }
+    #progressTrack {
+      width: 100%;
+      height: 7px;
+      background: #e8e8e8;
+      position: relative;
+      overflow: hidden;
+    }
+    #progressFill {
+      position: absolute;
+      top: 0; left: 0; height: 100%;
+      background: #000;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* ── TOP HEADER: circle + title + more info
+         Pinned to top, 30px below the 7px bar ── */
+    #topContent {
+      position: absolute;
+      top: 7px;
+      left: 0; right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 1.875rem;
+    }
+
+    /* Step circle */
+    #stepCircleEl {
+      width: 3.5rem;
+      height: 3.5rem;
+      border-radius: 50%;
+      border: 1.6px solid #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5625rem;
+      color: #1a1a1a;
+      flex-shrink: 0;
+    }
+
+    /* Title block */
+    #stepTitle {
+      font-size: 1.3125rem;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      line-height: 1.25;
+      text-align: center;
+      margin-top: 0.6rem;
+    }
+    #moreInfoLink {
+      font-size: 1.3125rem;
+      text-transform: uppercase;
+      color: rgba(26,26,26,0.4);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'GT Planar', sans-serif;
+      text-align: center;
+      padding: 0;
+      margin-top: 0;
+      display: block;
+      text-decoration: none;
+    }
+    #moreInfoLink:hover { text-decoration: underline; }
+
+    /* ── KEYWORDS AREA — absolutely centered vertically + horizontally in leftCol ── */
+    #keywordsBlock {
+      position: absolute;
+      top: 50%;
+      left: 0; right: 0;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Committed word rows — 0.5rem uniform spacing */
+    .word-row {
+      font-size: 1.5625rem;
+      color: #1a1a1a;
+      line-height: 1;
+      text-align: center;
+      width: 100%;
+      padding: 0.25rem 0;
+    }
+    .committed-word {
+      cursor: text;          /* I-beam shows it's editable */
+      display: inline-block;
+      user-select: text;
+      outline: none;
+      caret-color: #1a1a1a;
+      font-weight: 400;
+      text-transform: capitalize;
+    }
+    .committed-word:focus { outline: none; }
+    .committed-word.selected-all { background: rgba(26,26,26,0.12); }
+
+    /* Ghost initial suggestion (before focus) */
+    #initialSuggestion {
+      font-size: 1.5625rem;
+      color: rgba(26,26,26,0.28);
+      text-align: center;
+      pointer-events: auto;
+      line-height: 1;
+      padding: 0.25rem 0;
+      transition: opacity 0.2s;
+      cursor: default;
+    }
+    #initialSuggestion.hidden { opacity: 0; pointer-events: none; }
+
+    /* Active input row — same 0.5rem spacing */
+    #activeRow {
+      display: none;
+      align-items: baseline;
+      justify-content: center;
+      font-size: 1.5625rem;
+      color: #1a1a1a;
+      line-height: 1;
+      padding: 0.25rem 0;
+      width: 100%;
+    }
+    #activeRow.visible { display: flex; }
+
+    #kwSuggestion {
+      display: inline;
+      color: rgba(26,26,26,0.28);
+      font-weight: 400;
+      pointer-events: auto; /* clickable */
+      cursor: text;
+      text-transform: capitalize;
+    }
+
+    /* The contenteditable typing span */
+    #kwInput {
+      display: inline;
+      color: #1a1a1a;
+      font-weight: 400;
+      outline: none;
+      min-width: 2px;
+      white-space: pre;
+      caret-color: #1a1a1a;
+    }
+
+    /* Hidden real input — kept off-screen, used only to capture keys on mobile */
+    #keyword-input {
+      position: fixed;
+      opacity: 0;
+      top: -9999px; left: -9999px;
+      width: 1px; height: 1px;
+      font-size: 1.5625rem;
+    }
+
+    /* NEXT STEP BUTTON */
+    #nextStepBtn {
+      position: absolute;
+      bottom: 1.3125rem;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10.625rem;
+      height: 3.8125rem;
+      border: 1.6px solid #000;
+      background: #fff;
+      color: #000;
+      font-family: 'GT Planar', sans-serif;
+      font-size: 1.3125rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #nextStepBtn.visible { display: flex; }
+    #nextStepBtn:hover { background: #000; color: #fff; }
+
+    /* ══════════════════════════════════════════
+       RIGHT COLUMN
+    ══════════════════════════════════════════ */
+    #rightCol {
+      flex: 1;
+      height: 100vh;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #linesSvg {
+      position: absolute;
+      inset: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #floatLayer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+    }
+
+    /* Floating square — always behind images and words */
+    .float-square {
+      position: absolute;
+      width: 300px; height: 300px;
+      border: 1px solid #6a6a6a;
+      background: transparent;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Floating image — above squares */
+    .float-img-wrap {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      cursor: grab;
+      user-select: none;
+      z-index: 1;
+    }
+    .float-img-wrap.dragging { cursor: grabbing; }
+    .float-img-wrap img {
+      width: 300px; height: 300px;
+      object-fit: cover;
+      display: block;
+      border: 1px solid transparent;
+      pointer-events: none; /* prevent image drag interfering */
+    }
+    .shuffle-btn {
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      color: #fff;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none; border: none;
+      padding: 0;
+      font-family: 'GT Planar', sans-serif;
+      transition: opacity 0.2s;
+    }
+    .shuffle-btn:hover { opacity: 0.4; }
+
+    /* Floating word label */
+    .float-word {
+      position: absolute;
+      font-size: 1.3125rem;
+      padding: 4px 10px;
+      white-space: nowrap;
+      cursor: grab;
+      user-select: none;
+      text-transform: uppercase;
+      background: rgba(42,42,42,0.2);
+      color: rgba(255,255,255,0.5);
+      z-index: 1;
+    }
+    .float-word.dragging { cursor: grabbing; }
+
+    /* Tooltip */
+    #floatTooltip {
+      position: fixed;
+      background: rgba(0,0,0,0.88);
+      color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      padding: 5px 9px;
+      pointer-events: none;
+      display: none;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+      z-index: 9999;
+    }
+
+    /* On hover — manual: pink bg black text */
+    .float-word[data-source="manual"]:hover,
+    .float-word[data-source="manual"].hovered-manual {
+      background: #E63BF2;
+      color: #000;
+    }
+    /* On hover — suggestion: white bg black text */
+    .float-word[data-source="suggestion"]:hover,
+    .float-word[data-source="suggestion"].hovered-suggestion {
+      background: #f9f9f9;
+      color: #000;
+    }
+
+    /* Image hover borders */
+    .float-img-wrap[data-source="manual"].hovered-manual img { border-color: #E63BF2; }
+    .float-img-wrap[data-source="suggestion"].hovered-suggestion img { border-color: #f9f9f9; }
+  </style>
+</head>
+<body>
+
+<!-- LEFT COLUMN -->
+<div id="leftCol">
+
+  <!-- Progress bar — flush top -->
+  <div id="progressBarWrap">
+    <div id="progressTrack"><div id="progressFill"></div></div>
+  </div>
+
+  <!-- Top header: circle → title → more info (pinned to top) -->
+  <div id="topContent">
+    <div id="stepCircleEl">1</div>
+    <div id="stepTitle">Type a phrase to<br>describe your idea</div>
+    <button id="moreInfoLink">More Info</button>
+  </div>
+
+  <!-- Keywords: absolutely centered vertically + horizontally in left col -->
+  <div id="keywordsBlock">
+    <div id="committedWords"></div>
+    <div id="initialSuggestion"></div>
+    <div id="activeRow">
+      <span id="kwInput" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off"></span><span id="kwSuggestion"></span>
+    </div>
+  </div>
+
+  <button id="nextStepBtn">Next Step</button>
+
+  <!-- Off-screen fallback input (mobile) -->
+  <input id="keyword-input" type="text" autocomplete="off" spellcheck="false">
+</div>
+
+<!-- RIGHT COLUMN -->
+<div id="rightCol">
+  <svg id="linesSvg"></svg>
+  <div id="floatLayer"></div>
+</div>
+<div id="floatTooltip"></div>
+
+<textarea id="keyword-input" autocomplete="off" spellcheck="false" rows="1"></textarea>
+
+<script>
+const pageLoadStart = Date.now();
+
+// ── State ──────────────────────────────────────────────────────
+const state = {
+  keywords:    [],
+  wordSources: [],
+  images:      [],
+  pools:       [],
+  partial:     '',
+  focused:     false,
+};
+const shuffleIdx    = {};
+const shuffleCounts = {};
+
+// ── Elements ──────────────────────────────────────────────────
+const floatTooltip = document.getElementById('floatTooltip');
+const committedWordsEl  = document.getElementById('committedWords');
+const initialSuggestion = document.getElementById('initialSuggestion');
+const activeRow         = document.getElementById('activeRow');
+const kwInput           = document.getElementById('kwInput');
+const kwSuggestion      = document.getElementById('kwSuggestion');
+const nextStepBtn       = document.getElementById('nextStepBtn');
+const rightCol          = document.getElementById('rightCol');
+const floatLayer        = document.getElementById('floatLayer');
+const linesSvg          = document.getElementById('linesSvg');
+const moreInfoLink      = document.getElementById('moreInfoLink');
+
+// ── Word list ──────────────────────────────────────────────────
+const autocorrectWords = [
+  'twinkle','protein','cerebrum','blackhole','beret','hypnosis','banana','snail',
+  'tequila','typography','acrylic','compost','sanitizer','masala','nemo','velvet',
+  'fire','jeans','croissant','rizz','ketchup','spiderman','mongoose','recliner',
+  'spoon','goodbye','bucket','duck','squeegee','hazelnut','slime','dongle',
+  'generator','volcano','pomegranate','matcha','bagels','prosthetics','turnstile',
+  'xray','retainer','corset','earth','dentures','science','lego','formula','llama',
+  'cassettes','traffic','disco','pancakes','pilates','fortnite','severance','tab',
+  'vinyl','ostrich','iceland','fahrenheit','sheep','shrek','bouquet','aura',
+  'paradox','noir','yeti','parking','cardio','monocle','supernova','carrot',
+  'baroque','canoe','bitcoin','goatee','marshmallow','christmas','narwhal',
+  'mouthguard','armor','crown','burrito','apparatus','sweatpants','joker',
+  'balloon','gum','trombone','dictionary','bioluminescence','clog','toaster',
+  'butter','bib','onesie','saucepan','temperature','star','blueprint','mars',
+  'toothless','titanic','parachute','dustbin','tongue','benchpress','burst',
+  'peppermint','candycane','vespa','eggs','blizzard','eyebrows','dinosaur',
+  'toothpaste','candle'
+];
+
+let currentSuggestion = '';
+function pickRandom(exclude = []) {
+  const used = new Set([...state.keywords.map(k=>k.toLowerCase()), ...exclude.map(w=>w.toLowerCase())]);
+  const pool = autocorrectWords.filter(w => !used.has(w.toLowerCase()));
+  return pool[Math.floor(Math.random() * pool.length)] || autocorrectWords[0];
+}
+
+// ── Stopwords + keyword extraction ───────────────────────────
+const STOPWORDS = new Set([
+  'a','an','the','and','or','but','so','yet','for','nor','as','at','by','in',
+  'of','on','to','up','via','with','from','into','onto','upon','than','then',
+  'that','this','these','those','it','its','is','are','was','were','be','been',
+  'being','have','has','had','do','does','did','will','would','could','should',
+  'may','might','must','shall','can','need','dare','ought','used','make','made',
+  'made','just','also','very','too','more','most','much','many','some','any',
+  'all','both','each','few','more','other','such','no','not','only','own','same',
+  'so','than','too','very','just','because','if','while','when','where','how',
+  'what','which','who','whom','why','my','your','his','her','our','their','its',
+  'me','him','us','them','i','you','he','she','we','they','get','got','go','went',
+  'come','came','take','took','give','gave','know','knew','think','thought','see',
+  'saw','look','looked','want','wanted','like','liked','use','used','find','found',
+  'tell','told','ask','asked','seem','seemed','feel','felt','try','tried','leave',
+  'left','call','called','keep','kept','let','lets','put','set','run','ran','hold'
+]);
+
+function extractKeywords(phrase) {
+  // Split into words, strip punctuation, lowercase
+  const words = phrase.toLowerCase()
+    .replace(/[^a-z\s'-]/g, '')
+    .split(/\s+/)
+    .map(w => w.replace(/^[-']+|[-']+$/g, ''))
+    .filter(w => w.length > 1 && !STOPWORDS.has(w));
+
+  // Deduplicate preserving order
+  const seen = new Set();
+  const unique = words.filter(w => { if (seen.has(w)) return false; seen.add(w); return true; });
+
+  // Shuffle and take up to 4
+  const shuffled = unique.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4);
+}
+
+// ── Progress ──────────────────────────────────────────────────
+function updateProgress() {
+  progressFill.style.width = ((state.keywords.length / 4) * 33) + '%';
+}
+
+// ── Render committed words — each is contenteditable ──────────
+function renderCommitted() {
+  committedWordsEl.innerHTML = '';
+  state.keywords.forEach((word, idx) => {
+    const row  = document.createElement('div');
+    row.className = 'word-row';
+
+    const span = document.createElement('span');
+    span.className       = 'committed-word';
+    span.contentEditable = 'true';
+    span.spellcheck      = false;
+    span.textContent     = word;
+    span.dataset.idx     = idx;
+    span.dataset.original = word; // track original for change detection
+
+    // Prevent newlines inside the word
+    span.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        span.blur();
+      }
+    });
+
+    // On blur: recommit the corrected word
+    span.addEventListener('blur', async () => {
+      const newWord = span.textContent.trim().toLowerCase();
+      if (!newWord) {
+        span.textContent = state.keywords[idx];
+        return;
+      }
+      const original = state.keywords[idx];
+      if (newWord === original) return; // nothing changed
+
+      const valid = await isRealWord(newWord);
+      if (!valid) {
+        alert(`"${newWord}" doesn't seem to be a real word. Reverting.`);
+        span.textContent = original;
+        return;
+      }
+
+      state.keywords[idx] = newWord;
+
+      // Update floating word label text
+      const wf = floaters.find(f => f.type === 'word' && f.idx === idx);
+      if (wf) wf.el.textContent = newWord.toUpperCase();
+
+      // Always refetch image when word changed
+      state.images[idx] = null;
+      state.pools[idx]  = [];
+      fetchOneImage(newWord).then(src => {
+        if (src) { state.images[idx] = src; state.pools[idx] = [src]; attachImage(idx, src); }
+        buildPool(newWord).then(pool => {
+          if (pool.length) { state.pools[idx] = pool; if (!state.images[idx]) attachImage(idx, pool[0]); }
+        });
+      });
+
+      renderCommitted();
+    });
+
+    // Click/focus: place caret where clicked (browser does this natively for contenteditable)
+    span.addEventListener('focus', e => {
+      // Stop propagation so the global click handler doesn't steal focus to kwInput
+      e.stopPropagation();
+    });
+
+    row.appendChild(span);
+    committedWordsEl.appendChild(row);
+  });
+}
+
+// Simple Levenshtein distance for change detection
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) => Array.from({length: n+1}, (_, j) => i === 0 ? j : j === 0 ? i : 0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// ── Render active row ──────────────────────────────────────────
+function renderActiveRow() {
+  if (state.keywords.length >= 4) {
+    activeRow.classList.remove('visible');
+    kwInput.contentEditable = 'false';
+    kwInput.textContent = '';
+    return;
+  }
+  activeRow.classList.add('visible');
+  kwInput.contentEditable = 'true';
+  const val = kwInput.textContent || '';
+  kwSuggestion.textContent = val.length === 0 ? currentSuggestion : '';
+}
+
+// Helper: get text content from kwInput
+function getInputVal() {
+  return kwInput.textContent.trim();
+}
+
+// Helper: move caret to end of kwInput
+function caretToEnd() {
+  const range = document.createRange();
+  const sel   = window.getSelection();
+  range.selectNodeContents(kwInput);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// ── Activate on first focus ────────────────────────────────────
+function activateInput() {
+  if (state.focused) return;
+  state.focused = true;
+  // activeRow already visible, suggestion already set — nothing to change
+  spawnEmptySquare();
+}
+
+// ── Commit a word (with dictionary validation) ─────────────────
+async function commitWord(word, isSuggestion = false) {
+  word = word.trim();
+  if (!word || state.keywords.length >= 4) return;
+
+  // Validate — skip check for suggestion words (they're pre-vetted)
+  if (!isSuggestion) {
+    const valid = await isRealWord(word);
+    if (!valid) {
+      alert(`"${word}" doesn't seem to be a real word. Try again!`);
+      kwInput.textContent = '';
+      state.partial = '';
+      kwSuggestion.textContent = currentSuggestion;
+      kwInput.focus();
+      return;
+    }
+  }
+
+  const idx = state.keywords.length;
+  state.keywords.push(word.toLowerCase());
+  // If the typed word matches the current suggestion, treat it as suggestion-sourced
+  const effectiveSource = isSuggestion || word.toLowerCase() === currentSuggestion.toLowerCase()
+    ? 'suggestion' : 'manual';
+  state.wordSources.push(effectiveSource);
+  state.images.push(null);
+  state.pools.push([]);
+  shuffleIdx[idx] = 0;
+  state.partial   = '';
+  kwInput.textContent = '';
+  currentSuggestion   = pickRandom();
+  renderCommitted();
+  renderActiveRow();
+  updateProgress();
+  spawnWordLabel(idx, word, effectiveSource);
+  if (state.keywords.length >= 2) nextStepBtn.classList.add('visible');
+  if (state.keywords.length < 4) {
+    requestAnimationFrame(() => { kwInput.focus(); caretToEnd(); });
+  }
+
+  fetchOneImage(word).then(src => {
+    if (src) { state.images[idx] = src; state.pools[idx] = [src]; attachImage(idx, src); }
+    buildPool(word).then(pool => {
+      if (pool.length) { state.pools[idx] = pool; if (!state.images[idx]) attachImage(idx, pool[0]); }
+    });
+  });
+}
+
+// ── Wikimedia ──────────────────────────────────────────────────
+async function fetchOneImage(word) {
+  try {
+    const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=0&format=json&origin=*`);
+    const sd = await s.json();
+    for (const r of (sd?.query?.search || [])) {
+      const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
+      const id = await ir.json();
+      const p  = Object.values(id?.query?.pages || {})[0];
+      const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
+      if (src) return src;
+    }
+  } catch(_) {}
+  return null;
+}
+
+async function buildPool(word) {
+  const pool = [], seen = new Set();
+  let off = 0;
+  while (pool.length < 15 && off < 150) {
+    try {
+      const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=${off}&format=json&origin=*`);
+      const sd = await s.json();
+      const results = sd?.query?.search || [];
+      if (!results.length) break;
+      for (const r of results) {
+        if (pool.length >= 15) break;
+        if (seen.has(r.title)) continue;
+        seen.add(r.title);
+        try {
+          const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
+          const id = await ir.json();
+          const p  = Object.values(id?.query?.pages || {})[0];
+          const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
+          if (src) pool.push(src);
+        } catch(_) {}
+      }
+      off += 50;
+    } catch(_) { break; }
+  }
+  return pool;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FLOATING ELEMENTS
+// ══════════════════════════════════════════════════════════════
+const floaters = [];
+const IMG_SIZE = 300;
+
+function rcSize() { return { W: rightCol.offsetWidth, H: rightCol.offsetHeight }; }
+
+function randPos(w, h) {
+  const { W, H } = rcSize();
+  const margin = 20;
+  return {
+    x: margin + Math.random() * (W - w - margin * 2),
+    y: margin + Math.random() * (H - h - margin * 2),
+  };
+}
+
+function rv() {
+  const a = Math.random()*Math.PI*2, s = 0.22 + Math.random()*0.38;
+  return { vx: Math.cos(a)*s, vy: Math.sin(a)*s };
+}
+
+// ── Empty square ──────────────────────────────────────────────
+let emptySquareF = null;
+
+function spawnEmptySquare() {
+  if (state.keywords.length >= 4 || emptySquareF) return;
+  const {x,y} = randPos(IMG_SIZE, IMG_SIZE);
+  const {vx,vy} = rv();
+  const el = document.createElement('div');
+  el.className = 'float-square';
+  el.style.left = x+'px'; el.style.top = y+'px';
+  floatLayer.appendChild(el);
+  const f = {el,x,y,vx,vy,w:IMG_SIZE,h:IMG_SIZE,type:'square'};
+  floaters.push(f);
+  emptySquareF = f;
+}
+
+function removeEmptySquare() {
+  if (!emptySquareF) return;
+  const i = floaters.indexOf(emptySquareF);
+  if (i > -1) floaters.splice(i, 1);
+  emptySquareF.el.remove();
+  emptySquareF = null;
+}
+
+function maybeNewSquare() {
+  if (state.keywords.length >= 4 || emptySquareF) return;
+  setTimeout(spawnEmptySquare, 300);
+}
+
+// ── Attach image ──────────────────────────────────────────────
+function attachImage(idx, src) {
+  const ex = floaters.find(f => f.type==='img' && f.idx===idx);
+  if (ex) { const img = ex.el.querySelector('img'); if (img) img.src = src; return; }
+
+  let x, y, vx, vy;
+  if (emptySquareF) {
+    x=emptySquareF.x; y=emptySquareF.y;
+    vx=emptySquareF.vx; vy=emptySquareF.vy;
+    removeEmptySquare();
+  } else {
+    const p=randPos(IMG_SIZE,IMG_SIZE+30); const v=rv();
+    x=p.x; y=p.y; vx=v.vx; vy=v.vy;
+  }
+
+  const source = state.wordSources[idx] || 'manual';
+  const wrap   = document.createElement('div');
+  wrap.className = 'float-img-wrap';
+  wrap.style.left = x+'px'; wrap.style.top = y+'px';
+  wrap.dataset.idx    = idx;
+  wrap.dataset.source = source;
+
+  const img = document.createElement('img');
+  img.src = src; img.crossOrigin = 'anonymous';
+
+  const btn = document.createElement('button');
+  btn.className = 'shuffle-btn'; btn.textContent = 'Shuffle';
+
+  wrap.appendChild(img); wrap.appendChild(btn);
+  floatLayer.appendChild(wrap);
+
+  const f = {el:wrap, x, y, vx, vy, w:IMG_SIZE, h:IMG_SIZE+30, type:'img', idx, source, dragging:false};
+  floaters.push(f);
+
+  // Read idx from floater object so re-indexing is always reflected
+  btn.addEventListener('click', e => { e.stopPropagation(); shuffleImg(f.idx); });
+
+  makeDraggable(wrap, f);
+  wrap.addEventListener('mouseenter', () => setHover(f.idx, true));
+  wrap.addEventListener('mouseleave',  () => setHover(f.idx, false));
+  maybeNewSquare();
+}
+
+// ── Word label ────────────────────────────────────────────────
+function spawnWordLabel(idx, word, source) {
+  const {x,y} = randPos(140,36);
+  const {vx,vy} = rv();
+  const el = document.createElement('div');
+  el.className = 'float-word';
+  el.textContent = word.toUpperCase();
+  el.style.left = x+'px'; el.style.top = y+'px';
+  el.dataset.idx    = idx;
+  el.dataset.source = source;
+  floatLayer.appendChild(el);
+
+  const f = {el, x, y, vx, vy, w:140, h:36, type:'word', idx, source, dragging:false};
+  floaters.push(f);
+
+  makeDraggable(el, f);
+  el.addEventListener('mouseenter', () => setHover(f.idx, true));
+  el.addEventListener('mouseleave',  () => setHover(f.idx, false));
+}
+
+// ── Shuffle ────────────────────────────────────────────────────
+function shuffleImg(idx) {
+  const pool = state.pools[idx];
+  if (!pool || !pool.length) return;
+  lastShuffleTime = Date.now();
+  shuffleIdx[idx] = ((shuffleIdx[idx] ?? 0) + 1) % pool.length;
+  const src = pool[shuffleIdx[idx]];
+  state.images[idx] = src;
+  shuffleCounts[idx] = (shuffleCounts[idx] ?? 0) + 1;
+  const f = floaters.find(fl => fl.type==='img' && fl.idx===idx);
+  if (f) { const img = f.el.querySelector('img'); if (img) img.src = src; }
+}
+
+// ── Hover — only highlight the PAIRED word+image, not all mesh lines ──────
+function setHover(idx, on) {
+  const source = state.wordSources[idx] || 'manual';
+  const cls    = source==='manual' ? 'hovered-manual' : 'hovered-suggestion';
+
+  // Only toggle the img and word that belong to this exact idx
+  floaters.forEach(f => {
+    if (f.idx !== idx) return;
+    if (on) f.el.classList.add(cls);
+    else    f.el.classList.remove('hovered-manual', 'hovered-suggestion');
+  });
+
+  // Only change the line connecting THIS word to THIS image (key wIdx-iIdx where wIdx===idx AND iIdx===idx)
+  const pairedKey = `${idx}-${idx}`;
+  Object.keys(meshLines).forEach(key => {
+    const [wi, ii] = key.split('-').map(Number);
+    const isPaired = (wi === idx && ii === idx); // the exact matched pair
+    if (on) {
+      if (isPaired) {
+        // Highlight this pair's line
+        meshLines[key].setAttribute('stroke',
+          source === 'manual' ? '#E63BF2' : '#f9f9f9'
+        );
+      }
+      // All other lines involving this idx: leave at #6a6a6a (don't change)
+    } else {
+      // On mouseout, reset only lines that involve this idx
+      if (wi === idx || ii === idx) {
+        meshLines[key].setAttribute('stroke', '#6a6a6a');
+      }
+    }
+  });
+}
+
+// ── Remove floaters for idx ────────────────────────────────────
+function removeFloatersForIdx(idx) {
+  for (let i = floaters.length-1; i >= 0; i--) {
+    if ((floaters[i].type==='img'||floaters[i].type==='word') && floaters[i].idx===idx) {
+      floaters[i].el.remove();
+      floaters.splice(i, 1);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DRAG-TO-REPOSITION
+// ══════════════════════════════════════════════════════════════
+function makeDraggable(el, floater) {
+  let dragStartX = 0, dragStartY = 0;
+  let floaterStartX = 0, floaterStartY = 0;
+  let isDragging = false;
+
+  el.addEventListener('mousedown', e => {
+    // Don't start drag on shuffle button
+    if (e.target.classList.contains('shuffle-btn')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging = true;
+    floater.dragging = true;
+    el.classList.add('dragging');
+
+    const rcRect = rightCol.getBoundingClientRect();
+    dragStartX    = e.clientX - rcRect.left;
+    dragStartY    = e.clientY - rcRect.top;
+    floaterStartX = floater.x;
+    floaterStartY = floater.y;
+
+    // Pause velocity while dragging
+    floater._savedVx = floater.vx;
+    floater._savedVy = floater.vy;
+    floater.vx = 0;
+    floater.vy = 0;
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const rcRect = rightCol.getBoundingClientRect();
+    const mx = e.clientX - rcRect.left;
+    const my = e.clientY - rcRect.top;
+    floater.x = floaterStartX + (mx - dragStartX);
+    floater.y = floaterStartY + (my - dragStartY);
+    el.style.left = floater.x + 'px';
+    el.style.top  = floater.y + 'px';
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!isDragging) return;
+    isDragging = false;
+    floater.dragging = false;
+    el.classList.remove('dragging');
+
+    // Resume floating from dropped position with original velocity
+    floater.vx = floater._savedVx || 0;
+    floater.vy = floater._savedVy || 0;
+  });
+
+  // Touch support
+  el.addEventListener('touchstart', e => {
+    if (e.target.classList.contains('shuffle-btn')) return;
+    e.stopPropagation();
+    isDragging = true;
+    floater.dragging = true;
+    el.classList.add('dragging');
+    const t = e.touches[0];
+    const rcRect = rightCol.getBoundingClientRect();
+    dragStartX    = t.clientX - rcRect.left;
+    dragStartY    = t.clientY - rcRect.top;
+    floaterStartX = floater.x;
+    floaterStartY = floater.y;
+    floater._savedVx = floater.vx;
+    floater._savedVy = floater.vy;
+    floater.vx = 0; floater.vy = 0;
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    const rcRect = rightCol.getBoundingClientRect();
+    floater.x = floaterStartX + (t.clientX - rcRect.left - dragStartX);
+    floater.y = floaterStartY + (t.clientY - rcRect.top  - dragStartY);
+    el.style.left = floater.x + 'px';
+    el.style.top  = floater.y + 'px';
+  }, {passive:true});
+
+  document.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    floater.dragging = false;
+    el.classList.remove('dragging');
+    floater.vx = floater._savedVx || 0;
+    floater.vy = floater._savedVy || 0;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MESH LINES — every word <-> every image
+// ══════════════════════════════════════════════════════════════
+const meshLines = {};
+
+function clearAllMeshLines() {
+  Object.values(meshLines).forEach(l => l.remove());
+  Object.keys(meshLines).forEach(k => delete meshLines[k]);
+}
+
+function elCenter(el, container) {
+  // Get center of element relative to the right column container
+  const er = el.getBoundingClientRect();
+  const cr = container.getBoundingClientRect();
+  return {
+    cx: er.left - cr.left + er.width  / 2,
+    cy: er.top  - cr.top  + er.height / 2,
+  };
+}
+
+function drawMesh() {
+  const imgs  = floaters.filter(f => f.type==='img');
+  const words = floaters.filter(f => f.type==='word');
+
+  // Remove stale
+  Object.keys(meshLines).forEach(key => {
+    const [wi, ii] = key.split('-').map(Number);
+    if (!words.find(w => w.idx===wi) || !imgs.find(m => m.idx===ii)) {
+      meshLines[key].remove(); delete meshLines[key];
+    }
+  });
+
+  // Draw/update all pairs
+  words.forEach(wf => {
+    imgs.forEach(imgF => {
+      const key = `${wf.idx}-${imgF.idx}`;
+      if (!meshLines[key]) {
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('stroke', '#6a6a6a');
+        line.setAttribute('stroke-width', '1');
+        meshLines[key] = line;
+        linesSvg.appendChild(line);
+      }
+      const line = meshLines[key];
+
+      // Use actual rendered element centers for accurate connection points
+      const wc  = elCenter(wf.el,    rightCol);
+      // For image wraps, connect to the image itself (not including the shuffle button)
+      const imgEl = imgF.el.querySelector('img') || imgF.el;
+      const ic  = elCenter(imgEl, rightCol);
+
+      line.setAttribute('x1', wc.cx); line.setAttribute('y1', wc.cy);
+      line.setAttribute('x2', ic.cx); line.setAttribute('y2', ic.cy);
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ══════════════════════════════════════════════════════════════
+function tick() {
+  const { W, H } = rcSize();
+  const M = 10;
+
+  floaters.forEach(f => {
+    if (f.dragging) return; // skip physics while dragging
+
+    f.x += f.vx;
+    f.y += f.vy;
+
+    // Bounce
+    if (f.x <= M)            { f.x = M;           f.vx =  Math.abs(f.vx)*(0.9+Math.random()*0.2); }
+    if (f.x+f.w >= W-M)     { f.x = W-f.w-M;     f.vx = -Math.abs(f.vx)*(0.9+Math.random()*0.2); }
+    if (f.y <= M)            { f.y = M;           f.vy =  Math.abs(f.vy)*(0.9+Math.random()*0.2); }
+    if (f.y+f.h >= H-M)     { f.y = H-f.h-M;     f.vy = -Math.abs(f.vy)*(0.9+Math.random()*0.2); }
+
+    // Occasional organic nudge
+    if (Math.random() < 0.002) { const v=rv(); f.vx=v.vx; f.vy=v.vy; }
+
+    f.el.style.left = f.x + 'px';
+    f.el.style.top  = f.y + 'px';
+  });
+
+  drawMesh();
+  requestAnimationFrame(tick);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INPUT EVENTS
+// ══════════════════════════════════════════════════════════════
+let wordTimerStart=null, wordTimeMs=0, imageTimerStart=Date.now(), lastShuffleTime=null;
+
+// ── Dictionary check via Datamuse API ─────────────────────────
+async function isRealWord(word) {
+  try {
+    const res  = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&max=1&md=f`);
+    const data = await res.json();
+    // Exact match required
+    return data.length > 0 && data[0].word.toLowerCase() === word.toLowerCase();
+  } catch (_) {
+    return true; // fail open — don't block if API is down
+  }
+}
+
+// Clicking the suggestion: place cursor at START of kwInput (don't commit, don't change)
+kwSuggestion.addEventListener('mousedown', e => {
+  e.preventDefault(); // don't let click shift focus away from kwInput
+  kwInput.focus();
+  // Place caret at start of kwInput
+  const range = document.createRange();
+  const sel   = window.getSelection();
+  if (kwInput.childNodes.length > 0) {
+    range.setStart(kwInput.childNodes[0], 0);
+  } else {
+    range.setStart(kwInput, 0);
+  }
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+});
+
+kwInput.addEventListener('keydown', e => {
+  if (!wordTimerStart) wordTimerStart = Date.now();
+  // Prevent newline
+  if (e.key === 'Enter') { e.preventDefault(); return; }
+  // No leading spaces
+  if (e.key === ' ' && (kwInput.textContent||'').length === 0) { e.preventDefault(); return; }
+  // Tab — append suggestion word to phrase
+  if (e.key === 'Tab' && currentSuggestion) {
+    e.preventDefault();
+    const val = (kwInput.textContent || '').trimEnd();
+    kwInput.textContent = val + (val.length > 0 ? ' ' : '') + currentSuggestion + ' ';
+    caretToEnd();
+    currentSuggestion = pickRandom();
+    kwSuggestion.textContent = currentSuggestion;
+    clearTimeout(_phraseDebounce);
+    _phraseDebounce = setTimeout(() => syncKeywordsFromPhrase(kwInput.textContent), 400);
+  }
+});
+
+// ── Debounced live phrase extraction ──────────────────────────
+let _phraseDebounce = null;
+
+function syncKeywordsFromPhrase(phrase) {
+  const newKws = phrase.trim() ? extractKeywords(phrase) : [];
+
+  // If phrase is empty — clear everything
+  if (newKws.length === 0) {
+    for (let i = state.keywords.length - 1; i >= 0; i--) removeFloatersForIdx(i);
+    clearAllMeshLines();
+    state.keywords = []; state.wordSources = [];
+    state.images = []; state.pools = [];
+    Object.keys(shuffleIdx).forEach(k => delete shuffleIdx[k]);
+    Object.keys(shuffleCounts).forEach(k => delete shuffleCounts[k]);
+    updateProgress();
+    nextStepBtn.classList.remove('visible');
+    return;
+  }
+
+  // ── Remove keywords no longer in new set ──────────────────────
+  // Iterate backwards on a snapshot of current keywords so splicing doesn't corrupt indices
+  const snapshot = [...state.keywords];
+  for (let i = snapshot.length - 1; i >= 0; i--) {
+    if (!newKws.includes(snapshot[i])) {
+      // Find the current live index of this keyword (may have shifted)
+      const liveIdx = state.keywords.indexOf(snapshot[i]);
+      if (liveIdx === -1) continue;
+      removeFloatersForIdx(liveIdx);
+      state.keywords.splice(liveIdx, 1);
+      state.wordSources.splice(liveIdx, 1);
+      state.images.splice(liveIdx, 1);
+      state.pools.splice(liveIdx, 1);
+      // Re-index floaters above liveIdx
+      floaters.forEach(f => { if (typeof f.idx === 'number' && f.idx > liveIdx) f.idx--; });
+      // Re-index shuffleIdx and shuffleCounts
+      const newSI = {}, newSC = {};
+      Object.keys(shuffleIdx).forEach(k => {
+        const n = parseInt(k);
+        if (n < liveIdx) { newSI[n] = shuffleIdx[n]; newSC[n] = shuffleCounts[n] || 0; }
+        else if (n > liveIdx) { newSI[n-1] = shuffleIdx[n]; newSC[n-1] = shuffleCounts[n] || 0; }
+      });
+      Object.keys(shuffleIdx).forEach(k => delete shuffleIdx[k]);
+      Object.keys(shuffleCounts).forEach(k => delete shuffleCounts[k]);
+      Object.assign(shuffleIdx, newSI);
+      Object.assign(shuffleCounts, newSC);
+    }
+  }
+  clearAllMeshLines();
+
+  // ── Add keywords that are new (up to 4 total) ─────────────────
+  for (const kw of newKws) {
+    if (state.keywords.includes(kw)) continue;
+    if (state.keywords.length >= 4) break;
+    const idx = state.keywords.length; // capture index now — stable for this iteration
+    state.keywords.push(kw);
+    state.wordSources.push(kw.toLowerCase() === currentSuggestion.toLowerCase() ? 'suggestion' : 'manual');
+    state.images.push(null);
+    state.pools.push([]);
+    shuffleIdx[idx] = 0;
+    spawnWordLabel(idx, kw, state.wordSources[idx]);
+    // Capture idx in closure explicitly
+    (function(capturedIdx, capturedKw) {
+      fetchOneImage(capturedKw).then(src => {
+        if (!src) return;
+        state.images[capturedIdx] = src;
+        state.pools[capturedIdx] = [src];
+        attachImage(capturedIdx, src);
+        buildPool(capturedKw).then(pool => {
+          if (pool.length) {
+            state.pools[capturedIdx] = pool;
+            if (!state.images[capturedIdx]) attachImage(capturedIdx, pool[0]);
+          }
+        });
+      });
+    })(idx, kw);
+  }
+
+  updateProgress();
+  if (state.keywords.length >= 2) nextStepBtn.classList.add('visible');
+  else nextStepBtn.classList.remove('visible');
+}
+
+kwInput.addEventListener('input', () => {
+  let val = kwInput.textContent || '';
+
+  // Strip accidental newlines
+  if (val.includes('\n')) {
+    val = val.replace(/\n/g, '');
+    kwInput.textContent = val;
+    caretToEnd();
+  }
+
+  // Auto-capitalize first letter
+  if (val.length >= 1 && val[0] !== val[0].toUpperCase()) {
+    kwInput.textContent = val[0].toUpperCase() + val.slice(1);
+    caretToEnd();
+    val = kwInput.textContent;
+  }
+
+  state.partial = val.trim();
+
+  // Suggestion after space
+  if (val.length === 0) {
+    kwSuggestion.textContent = currentSuggestion;
+  } else if (val.endsWith(' ') || val.endsWith('\u00a0')) {
+    currentSuggestion = pickRandom();
+    kwSuggestion.textContent = currentSuggestion;
+  } else {
+    kwSuggestion.textContent = '';
+  }
+
+  // Debounced extraction
+  clearTimeout(_phraseDebounce);
+  _phraseDebounce = setTimeout(() => syncKeywordsFromPhrase(val), 400);
+});
+
+// Click anywhere to focus kwInput (except buttons/shuffle/committed words)
+document.addEventListener('click', e => {
+  if (nextStepBtn.contains(e.target)) return;
+  if (moreInfoLink.contains(e.target)) return;
+  if (e.target.classList.contains('shuffle-btn')) return;
+  if (e.target.classList.contains('committed-word')) return; // let it handle its own focus
+  if (e.target.closest && e.target.closest('.committed-word')) return;
+  if (state.keywords.length >= 4) return;
+  if (!state.focused) { activateInput(); return; }
+  kwInput.focus();
+});
+
+moreInfoLink.addEventListener('click', e => {
+  e.stopPropagation();
+  alert('Step 1: Type up to 4 keywords. Press Enter to confirm each word. Click a word to re-edit it. Drag images and words in the right panel to rearrange them.');
+});
+
+// ── Next Step ──────────────────────────────────────────────────
+nextStepBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const urls = state.images.filter(u => typeof u==='string' && u.trim());
+  try {
+    sessionStorage.setItem('BRICK_BREAKER_KEYWORDS',      JSON.stringify(state.keywords));
+    sessionStorage.setItem('BRICK_BREAKER_WORD_SOURCES',  JSON.stringify(state.wordSources));
+    sessionStorage.setItem('BRICK_BREAKER_IMAGES',        JSON.stringify(urls));
+    sessionStorage.setItem('BRICK_BREAKER_SHUFFLE_COUNTS',JSON.stringify(urls.map((_,i)=>shuffleCounts[i]??0)));
+    sessionStorage.setItem('BRICK_BREAKER_PROGRESS',      JSON.stringify({step:1,pct:33}));
+    if (wordTimerStart) wordTimeMs = Date.now()-wordTimerStart;
+    const landingTimeMs = Date.now() - pageLoadStart;
+    sessionStorage.setItem('BRICK_BREAKER_WORD_TIME',    JSON.stringify(landingTimeMs));
+    sessionStorage.setItem('BRICK_BREAKER_IMAGE_TIME',   JSON.stringify(landingTimeMs));
+    sessionStorage.setItem('BRICK_BREAKER_LANDING_TIME', JSON.stringify(landingTimeMs));
+  } catch(_) {}
+  window.location.href = 'processing.html';
+});
+
+// ── Tooltip on ghost suggestion words (left col) ──────────────
+function attachSuggestionTooltip(el) {
+  el.addEventListener('mousemove', e => {
+    floatTooltip.textContent = 'Be whacky';
+    floatTooltip.style.display = 'block';
+    floatTooltip.style.left = (e.clientX + 14) + 'px';
+    floatTooltip.style.top  = (e.clientY + 14) + 'px';
+  });
+  el.addEventListener('mouseleave', () => { floatTooltip.style.display = 'none'; });
+}
+attachSuggestionTooltip(kwSuggestion);
+attachSuggestionTooltip(initialSuggestion);
+currentSuggestion = pickRandom();
+// Show the active row immediately (so no layout jump on first click)
+// kwInput is not editable yet — editing activates on first focus
+kwInput.contentEditable = 'false';
+activeRow.classList.add('visible');
+kwSuggestion.textContent = currentSuggestion;
+initialSuggestion.classList.add('hidden'); // never need the separate element
+requestAnimationFrame(tick);
+setTimeout(() => { kwInput.contentEditable = 'true'; kwInput.focus(); }, 100);
+</script>
+</body>
+</html>

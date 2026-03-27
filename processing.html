@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conditioned Autonomy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-weight: 400; }
+
+    @font-face {
+      font-family: 'GT Planar';
+      src: url('GT-Planar-Regular-Trial.otf') format('opentype');
+    }
+
+    body {
+      font-family: 'GT Planar', sans-serif;
+      background: #000;
+      height: 100vh; width: 100vw;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ═══════════════════════════════════════
+       LEFT COLUMN
+    ═══════════════════════════════════════ */
+    #leftCol {
+      width: 47.5rem; min-width: 47.5rem;
+      height: 100vh; background: #fff;
+      display: flex; flex-direction: column;
+      align-items: flex-start; position: relative;
+      flex-shrink: 0; overflow: hidden;
+    }
+
+    /* Progress bar — flush top */
+    #progressBarWrap { position: fixed; top: 0; left: 0; width: 47.5rem; z-index: 3000; }
+    #progressTrack { width: 100%; height: 7px; background: #e8e8e8; position: relative; overflow: hidden; }
+    #progressFill { position: absolute; top: 0; left: 0; height: 100%; background: #000; width: 33%; transition: width 0.5s ease; }
+
+    /* Top header — same as brickbreaker */
+    #topContent {
+      position: absolute; top: 7px; left: 0; right: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 1.875rem;
+    }
+    #stepCircleEl {
+      width: 3.5rem; height: 3.5rem; border-radius: 50%;
+      border: 1.6px solid #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5625rem; color: #1a1a1a;
+    }
+    #stepTitle {
+      font-size: 1.3125rem; color: #1a1a1a;
+      text-transform: uppercase; line-height: 1.25;
+      text-align: center; margin-top: 0.6rem;
+      letter-spacing: 0;
+    }
+    #moreInfoLink {
+      font-size: 1.3125rem; text-transform: uppercase;
+      color: rgba(26,26,26,0.4); cursor: pointer;
+      background: none; border: none;
+      font-family: 'GT Planar', sans-serif;
+      text-align: center; padding: 0; margin-top: 0;
+      display: block; text-decoration: none;
+      letter-spacing: 0;
+    }
+    #moreInfoLink:hover { text-decoration: underline; }
+
+    /* Center area — hover hint or edit panel */
+    #leftCenter {
+      position: absolute; top: 50%; left: 0; right: 0;
+      transform: translateY(-50%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    #hoverHint {
+      font-size: 1.3125rem;
+      color: rgba(26,26,26,0.28);
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    /* ─── EDIT PANEL — centered in left col ─── */
+    #editPanel {
+      display: none; flex-direction: column;
+      align-items: flex-start;
+      gap: 1.375rem; /* ~22px between major sections */
+      width: auto;
+    }
+    #editPanel.visible { display: flex; }
+
+    /* Toggle group — ONE box, outer border only, cells share inner borders */
+    #toggleGroup {
+      display: flex; align-items: stretch;
+      border: 1.6px solid #1a1a1a;
+    }
+    .toggle-btn {
+      width: 52px; height: 52px;
+      border: none;
+      border-right: 1.6px solid #1a1a1a;
+      background: #fff;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.12s;
+      position: relative;
+    }
+    .toggle-btn:last-child { border-right: none; }
+
+    /* All buttons: hover = black bg */
+    .toggle-btn:hover { background: #1a1a1a; }
+    .toggle-btn:hover svg line,
+    .toggle-btn:hover svg rect,
+    .toggle-btn:hover svg path { stroke: #fff; }
+    /* Circle buttons: circle stays its color on hover/active */
+    .toggle-btn.circle-btn:hover .circle-inner,
+    .toggle-btn.circle-btn.active .circle-inner { opacity: 1; } /* circle color unchanged */
+
+    /* Active = black background stays */
+    .toggle-btn.active { background: #1a1a1a; }
+    .toggle-btn.active svg line,
+    .toggle-btn.active svg rect,
+    .toggle-btn.active svg path { stroke: #fff; }
+
+    .toggle-btn svg { width: 28px; height: 28px; }
+    .circle-inner {
+      width: 28px; height: 28px; border-radius: 50%;
+      pointer-events: none;
+    }
+    .circle-red   { background: #ec0804; }
+    .circle-blue  { background: #0474fd; }
+    .circle-green { background: #0ce417; }
+
+    /* Active filter pills — horizontal row, wraps at toggle group width */
+    #activeFilterNames {
+      display: flex; flex-direction: row; flex-wrap: wrap;
+      align-items: flex-start; gap: 0.4rem;
+      min-height: 0;
+      width: calc(6 * 52px + 5 * 1.6px); /* matches 6 buttons + 5 internal borders */
+    }
+    .active-filter-pill {
+      font-size: 0.75rem; text-transform: uppercase;
+      color: #1a1a1a; letter-spacing: 0;
+      background: #e0e0e0;
+      padding: 0.3rem 0.7rem;
+      font-weight: 400;
+    }
+
+    /* Sliders block */
+    .sliders-block {
+      width: 20rem;
+      display: flex; flex-direction: column; gap: 2.5rem; /* 22px between sliders */
+    }
+    .slider-group {
+      display: flex; flex-direction: column; gap: 2rem; /* 22px between label and track */
+    }
+    .slider-label-text {
+      font-size: 1.125rem; /* 18px */
+      text-transform: uppercase;
+      color: #1a1a1a; letter-spacing: 0;
+      font-weight: 400;
+    }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .slider-track-outer {
+      flex: 1; height: 1.25rem;
+      display: flex; align-items: center;
+      position: relative; cursor: ew-resize;
+    }
+    .slider-track-line {
+      position: absolute; left: 0; right: 0;
+      height: 1.6px; background: #1a1a1a; /* same stroke as next image button border */
+    }
+    .slider-thumb {
+      position: absolute; top: 50%;
+      transform: translateY(-50%);
+      width: 20px; height: 20px; /* 20×20px */
+      background: #1a1a1a; pointer-events: none; left: 0;
+    }
+    .slider-value {
+      font-size: 1.125rem; /* same as label */
+      text-transform: uppercase;
+      color: #1a1a1a; letter-spacing: 0;
+      width: 2.5rem; text-align: right; flex-shrink: 0;
+    }
+
+    /* Next Image button — same as brickbreaker Next Step */
+    #nextImgBtn {
+      position: absolute; bottom: 1.3125rem; left: 50%;
+      transform: translateX(-50%);
+      width: 10.625rem; height: 3.8125rem;
+      border: 1.6px solid #000; background: #fff; color: #000;
+      font-family: 'GT Planar', sans-serif; font-size: 1.3125rem;
+      text-transform: uppercase; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #nextImgBtn.visible { display: flex; }
+    #nextImgBtn:hover { background: #000; color: #fff; }
+
+    /* All-done Next Step button */
+    #nextStepBtn {
+      position: absolute; bottom: 1.3125rem; left: 50%;
+      transform: translateX(-50%);
+      width: 10.625rem; height: 3.8125rem;
+      border: 1.6px solid #000; background: #fff; color: #000;
+      font-family: 'GT Planar', sans-serif; font-size: 1.3125rem;
+      text-transform: uppercase; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #nextStepBtn.visible { display: flex; }
+    #nextStepBtn:hover { background: #000; color: #fff; }
+
+    /* ═══════════════════════════════════════
+       RIGHT COLUMN
+    ═══════════════════════════════════════ */
+    #rightCol {
+      flex: 1; height: 100vh; background: #000;
+      position: relative; overflow: hidden;
+    }
+
+    /* Web view — floaters */
+    #floatLayer { position: absolute; inset: 0; z-index: 3; }
+    #linesSvg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 2;
+    }
+
+    /* Edit view — full bleed canvas, white background */
+    #editView {
+      display: none;
+      position: absolute; inset: 0; z-index: 10;
+      background: #fff;
+    }
+    #editView.visible { display: flex; align-items: stretch; }
+    #editCanvas {
+      width: 100%; height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #fff;
+    }
+
+    /* Hide web when editing */
+    #rightCol.editing #floatLayer,
+    #rightCol.editing #linesSvg { display: none; }
+
+    /* Floating image */
+    .float-img-wrap {
+      position: absolute; width: 300px; height: 300px;
+      cursor: pointer; z-index: 1;
+    }
+    .float-img-wrap img {
+      width: 300px; height: 300px; object-fit: cover; display: block;
+      border: 1px solid transparent; box-sizing: border-box;
+    }
+    .float-img-wrap.circle img {
+      border-radius: 50%; clip-path: circle(50%);
+      border-color: #E63BF2 !important;
+    }
+    .float-img-wrap.done .img-overlay { opacity: 0 !important; }
+    .float-img-wrap.done:hover img { border-color: transparent !important; }
+    .float-img-wrap.done.circle:hover img { border-color: #E63BF2 !important; }
+    .float-img-wrap.done .edit-menu { display: none !important; }
+
+    .img-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.5);
+      pointer-events: none; transition: opacity 0.15s;
+    }
+    .float-img-wrap:not(.done):hover .img-overlay { opacity: 0; }
+    .float-img-wrap:not(.done):hover img { border-color: var(--hover-color, #f9f9f9); }
+
+    .edit-menu {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      display: none; flex-direction: column;
+      align-items: center; gap: 6px;
+      z-index: 10; pointer-events: none;
+    }
+    .float-img-wrap:not(.done):hover .edit-menu { display: flex; pointer-events: auto; }
+
+    .edit-btn {
+      font-family: 'GT Planar', sans-serif;
+      font-size: 1.3125rem; text-transform: uppercase;
+      padding: 4px 10px; white-space: nowrap;
+      cursor: pointer; border: none;
+      background: rgba(42,42,42,0.2);
+      color: rgba(255,255,255,0.5);
+      transition: background 0.12s, color 0.12s;
+    }
+    .edit-btn.manual:hover { background: #E63BF2; color: #000; }
+    .edit-btn.automate:hover { background: #f9f9f9; color: #000; }
+
+    /* Word dot */
+    .float-dot {
+      position: absolute; width: 12px; height: 12px;
+      border-radius: 50%; cursor: grab; z-index: 1;
+      overflow: visible; /* allow preview to pop out */
+    }
+    .float-dot.dragging { cursor: grabbing; }
+    .float-img-wrap.dragging { cursor: grabbing; }
+
+    /* Dot hover preview */
+    .dot-preview {
+      position: absolute;
+      top: 16px; left: 16px;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: fixed;
+      background: rgba(0,0,0,0.88);
+      color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif;
+      font-size: 0.7rem; text-transform: uppercase;
+      padding: 5px 9px; pointer-events: none;
+      display: none; white-space: nowrap;
+      letter-spacing: 0.04em; z-index: 9999;
+    }
+    /* ══════════════════════════════════════════
+       COMPOSITE VIEW (replaces both columns)
+    ══════════════════════════════════════════ */
+    #compositeView {
+      position: fixed; inset: 0; display: none; z-index: 2000;
+    }
+    #compositeView.visible { display: flex; }
+    #compLeftCol {
+      width: 47.5rem; min-width: 47.5rem; height: 100vh; background: #fff;
+      display: flex; flex-direction: column; align-items: center;
+      position: relative; flex-shrink: 0;
+    }
+    /* right col — black, floaters animate into it */
+    #compRightCol {
+      flex: 1; height: 100vh; background: #000;
+      position: relative; overflow: hidden;
+    }
+    /* composite image — hidden until dot clicked */
+    #compOutputCanvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: none;
+      object-fit: cover;
+    }
+    /* merged dot layer */
+    #compDotLayer {
+      position: absolute; inset: 0;
+    }
+    /* Generate button — same exact style as nextStepBtn */
+    #generateBtn {
+      position: absolute; bottom: 1.3125rem; left: 50%;
+      transform: translateX(-50%);
+      width: 10.625rem; height: 3.8125rem;
+      border: 1.6px solid #000; background: #fff; color: #000;
+      font-family: 'GT Planar', sans-serif; font-size: 1.3125rem;
+      text-transform: uppercase; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    #generateBtn.visible { display: flex; }
+    #generateBtn:hover { background: #000; color: #fff; }
+    /* ghost text — same style as hoverHint */
+    #compGhostText {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.3125rem;
+      color: rgba(26,26,26,0.28);
+      text-align: center;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    /* ── POST-GENERATION BUTTONS ── */
+    .comp-action-btn {
+      width: 10.625rem; height: 3.8125rem;
+      border: 1.6px solid #000; background: #fff; color: #000;
+      font-family: 'GT Planar', sans-serif; font-size: 1.3125rem;
+      text-transform: uppercase; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .comp-action-btn.visible { display: flex; }
+    .comp-action-btn:hover { background: #000; color: #fff; }
+    #compCenterBtns {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      display: none; flex-direction: column;
+      align-items: center; gap: 1rem;
+    }
+    #compCenterBtns.visible { display: flex; }
+    #viewStatsBtn {
+      position: absolute; bottom: 1.3125rem; left: 50%;
+      transform: translateX(-50%);
+    }
+    /* cooking text */
+    #cookingText {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.3125rem;
+      color: rgba(26,26,26,0.28);
+      text-align: center; text-transform: uppercase;
+      display: none; cursor: default; white-space: nowrap;
+    }
+    #cookingText.visible { display: block; }
+    @keyframes dot-blink {
+      0%, 100% { opacity: 0; } 33% { opacity: 1; } 66% { opacity: 0; }
+    }
+    #cookingDots span { opacity: 0; animation: dot-blink 1.2s infinite; }
+    #cookingDots span:nth-child(1) { animation-delay: 0s; }
+    #cookingDots span:nth-child(2) { animation-delay: 0.4s; }
+    #cookingDots span:nth-child(3) { animation-delay: 0.8s; }
+    /* cooking tooltip */
+    #cookingTooltip {
+      position: fixed; background: rgba(0,0,0,0.88); color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif; font-size: 0.7rem;
+      text-transform: uppercase; padding: 5px 9px; pointer-events: none;
+      display: none; white-space: normal; letter-spacing: 0.04em; z-index: 9999;
+      max-width: 160px; line-height: 1.5;
+    }
+    /* noise canvas over right col */
+    #denoiseCanvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      display: none; z-index: 5;
+    }
+
+    /* ══════════════════════════════════════════
+       SUMMARY / DATA VIZ VIEW
+    ══════════════════════════════════════════ */
+    #summaryView {
+      position: fixed; inset: 0; background: #000; display: none;
+      flex-direction: column; align-items: center; justify-content: center; z-index: 300;
+    }
+    #summaryView.visible { display: flex; }
+    #summaryView canvas, #summaryView img { display: block; max-height: 70vh; max-width: 70vw; }
+    .summary-next-wrap { position: absolute; bottom: 1.3125rem; right: 1.3125rem; }
+    .summary-next-btn {
+      width: 4rem; height: 4rem; border: 2.5px solid #f9f9f9; border-radius: 50%;
+      background: #000; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: background 0.12s;
+    }
+    .summary-next-btn:hover { background: #f9f9f9; }
+    .summary-next-btn:hover svg line, .summary-next-btn:hover svg polyline { stroke: #000; }
+    .summary-next-btn svg { width: 1.25rem; height: 1.25rem; }
+    @keyframes dot-cycle { 0%, 100% { opacity: 0; } 33.3% { opacity: 1; } 66.6% { opacity: 0; } }
+    #loadingDots span { opacity: 0; animation: dot-cycle 1.2s infinite; }
+    #loadingDots span:nth-child(1) { animation-delay: 0s; }
+    #loadingDots span:nth-child(2) { animation-delay: 0.4s; }
+    #loadingDots span:nth-child(3) { animation-delay: 0.8s; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+
+<div id="leftCol">
+  <div id="progressBarWrap">
+    <div id="progressTrack"><div id="progressFill"></div></div>
+  </div>
+
+  <div id="topContent">
+    <div id="stepCircleEl">2</div>
+    <div id="stepTitle">Edit and make your<br>images smaller</div>
+    <button id="moreInfoLink">More Info</button>
+  </div>
+
+  <div id="leftCenter">
+    <!-- Default: hover hint -->
+    <div id="hoverHint">hover over your<br>image to edit</div>
+
+    <!-- Edit panel — shown when manually editing -->
+    <div id="editPanel">
+
+      <!-- Filter toggle buttons -->
+      <div id="toggleGroup">
+        <button class="toggle-btn circle-btn" data-filter="red" title="Red Areas">
+          <div class="circle-inner circle-red"></div>
+        </button>
+        <button class="toggle-btn circle-btn" data-filter="blue" title="Blue Areas">
+          <div class="circle-inner circle-blue"></div>
+        </button>
+        <button class="toggle-btn circle-btn" data-filter="green" title="Green Areas">
+          <div class="circle-inner circle-green"></div>
+        </button>
+        <button class="toggle-btn svg-btn" data-filter="horizontal" title="Horizontal Lines">
+          <svg viewBox="0 0 32 32" fill="none"><line x1="4" y1="16" x2="28" y2="16" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="toggle-btn svg-btn" data-filter="vertical" title="Vertical Lines">
+          <svg viewBox="0 0 32 32" fill="none"><line x1="16" y1="4" x2="16" y2="28" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+        <button class="toggle-btn svg-btn" data-filter="diagonal" title="Diagonal Lines">
+          <svg viewBox="0 0 32 32" fill="none"><line x1="6" y1="6" x2="26" y2="26" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Active filter name stack -->
+      <div id="activeFilterNames"></div>
+
+      <!-- Sliders -->
+      <div class="sliders-block">
+        <div class="slider-group">
+          <div class="slider-label-text">Pixel Spacing</div>
+          <div class="slider-row">
+            <div class="slider-track-outer" id="strideTrack">
+              <div class="slider-track-line"></div>
+              <div class="slider-thumb" id="strideThumb"></div>
+            </div>
+            <span class="slider-value" id="strideVal">1</span>
+          </div>
+        </div>
+        <div class="slider-group">
+          <div class="slider-label-text">Pixel Size</div>
+          <div class="slider-row">
+            <div class="slider-track-outer" id="sizeTrack">
+              <div class="slider-track-line"></div>
+              <div class="slider-thumb" id="sizeThumb"></div>
+            </div>
+            <span class="slider-value" id="sizeVal">1</span>
+          </div>
+        </div>
+        <div class="slider-group">
+          <div class="slider-label-text">Erase Pixels</div>
+          <div class="slider-row">
+            <div class="slider-track-outer" id="eraseTrack">
+              <div class="slider-track-line"></div>
+              <div class="slider-thumb" id="eraseThumb"></div>
+            </div>
+            <span class="slider-value" id="eraseVal">0</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Next Image button — shown while editing -->
+  <button id="nextImgBtn">Next Image</button>
+  <!-- Next Step button — shown when all done -->
+  <button id="nextStepBtn">Next Step</button>
+</div>
+
+<div id="rightCol">
+  <!-- Web view -->
+  <svg id="linesSvg"></svg>
+  <div id="floatLayer"></div>
+
+  <!-- Edit view — full bleed canvas -->
+  <div id="editView">
+    <canvas id="editCanvas"></canvas>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- ══ COMPOSITE VIEW ══ -->
+<div id="compositeView">
+  <div id="compLeftCol">
+    <div style="position:absolute;top:7px;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding-top:1.875rem;">
+      <div style="width:3.5rem;height:3.5rem;border-radius:50%;border:1.6px solid #1a1a1a;display:flex;align-items:center;justify-content:center;font-size:1.5625rem;color:#1a1a1a;">3</div>
+      <div style="font-size:1.3125rem;color:#1a1a1a;text-transform:uppercase;line-height:1.25;text-align:center;margin-top:0.6rem;">Generate your image</div>
+      <button id="compMoreInfoLink" style="font-size:1.3125rem;text-transform:uppercase;color:rgba(26,26,26,0.4);cursor:pointer;background:none;border:none;font-family:'GT Planar',sans-serif;text-align:center;padding:0;margin-top:0;display:block;text-decoration:none;letter-spacing:0;">More Info</button>
+    </div>
+    <div id="compGhostText">Click the dot to see<br>the combined image<br>that used your<br>edited images</div>
+    <div id="cookingText">Cooking<span id="cookingDots"><span>.</span><span>.</span><span>.</span></span></div>
+    <button id="generateBtn">Generate</button>
+    <div id="compCenterBtns">
+      <button id="downloadBtn" class="comp-action-btn">Download</button>
+      <button id="processBtn" class="comp-action-btn">Process</button>
+    </div>
+    <button id="viewStatsBtn" class="comp-action-btn">View Stats</button>
+  </div>
+  <div id="compRightCol">
+    <canvas id="compOutputCanvas" width="1000" height="1000"></canvas>
+    <canvas id="denoiseCanvas" width="1000" height="1000"></canvas>
+    <div id="compDotLayer"></div>
+  </div>
+</div>
+<div id="cookingTooltip"></div>
+
+<!-- ══ DATA VIZ VIEW ══ -->
+<div id="dataVizView" style="position:fixed;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:3000;">
+  <button class="comp-home-link" id="dataVizHomeBtn" style="color:#f9f9f9;">Home</button>
+  <div id="dataVizStat" style="position:absolute;top:1.375rem;width:100%;text-align:center;color:#f9f9f9;font-size:14px;font-family:'GT Planar',sans-serif;font-weight:400;text-transform:uppercase;"></div>
+  <div id="dataVizTime" style="position:absolute;top:calc(1.375rem + 1.6em);width:100%;text-align:center;color:rgba(249,249,249,0.5);font-size:14px;font-family:'GT Planar',sans-serif;font-weight:400;text-transform:uppercase;"></div>
+  <div id="dataVizLabelsRow" style="display:flex;gap:0;margin-bottom:6px;">
+    <div style="font-family:'GT Planar',sans-serif;font-size:0.72rem;text-transform:uppercase;color:rgba(249,249,249,0.38);text-decoration:underline;text-align:center;width:min(40vh,480px);">User</div>
+    <div style="font-family:'GT Planar',sans-serif;font-size:0.72rem;text-transform:uppercase;color:rgba(249,249,249,0.38);text-decoration:underline;text-align:center;width:min(40vh,480px);">Output</div>
+  </div>
+  <div style="display:flex;gap:2vw;align-items:center;padding-top:1vh;">
+    <canvas id="squaresCanvas" width="1000" height="1000" style="display:block;width:min(40vh,480px);height:min(40vh,480px);background:#000;cursor:crosshair;outline:2px solid #f9f9f9;"></canvas>
+    <canvas id="dataVizOutputCanvas" width="1000" height="1000" style="display:block;width:min(40vh,480px);height:min(40vh,480px);background:#111;outline:2px solid #f9f9f9;"></canvas>
+  </div>
+  <div style="margin-top:4vh;">
+    <button id="dataVizDownloadBtn" style="width:4rem;height:4rem;border:2px solid #f9f9f9;border-radius:50%;background:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.12s;">
+      <svg viewBox="0 0 24 24" fill="none" style="width:1.25rem;height:1.25rem;">
+        <path d="M12 3v12M8 11l4 4 4-4" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+</div>
+<div id="squaresTooltip" style="position:fixed;background:rgba(0,0,0,0.88);color:#f9f9f9;font-family:'GT Planar',sans-serif;font-size:0.7rem;text-transform:uppercase;padding:5px 9px;pointer-events:none;display:none;white-space:nowrap;letter-spacing:0.04em;z-index:9999;"></div>
+
+<!-- ══ SUMMARY VIEW ══ -->
+<div id="summaryView">
+  <button class="comp-home-link" id="summaryHomeBtn" style="position:absolute;top:1.375rem;left:1.3125rem;z-index:10;color:#f9f9f9;">Home</button>
+  <img id="summaryImg" alt="Generated" style="display:none"/>
+  <canvas id="summaryCanvas" width="1000" height="1000" style="display:none"></canvas>
+  <div class="summary-next-wrap">
+    <button class="summary-next-btn" id="summaryNextBtn">
+      <svg viewBox="0 0 24 24" fill="none">
+        <line x1="5" y1="12" x2="19" y2="12" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round"/>
+        <polyline points="13,6 19,12 13,18" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  LOAD STATE
+// ══════════════════════════════════════════════════════════════
+let images=[], keywords=[], wordSources=[], savedFloaters=[];
+const processingPageStart = Date.now();
+const editTimes = {}; // per-image extra manual time in ms
+const editStartTimes = {}; // when manual edit started for each image
+try{images=JSON.parse(sessionStorage.getItem('BRICK_BREAKER_IMAGES')||'[]');}catch(_){}
+try{keywords=JSON.parse(sessionStorage.getItem('BRICK_BREAKER_KEYWORDS')||'[]');}catch(_){}
+try{wordSources=JSON.parse(sessionStorage.getItem('BRICK_BREAKER_WORD_SOURCES')||'[]');}catch(_){}
+try{savedFloaters=JSON.parse(sessionStorage.getItem('BRICK_BREAKER_FLOATERS')||'[]');}catch(_){}
+images=images.filter(u=>typeof u==='string'&&u.trim());
+
+if(images.length<2){
+  document.body.innerHTML='<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:0.8rem;text-transform:uppercase;color:rgba(0,0,0,0.4);background:#fff;font-family:sans-serif;"><span>No images found</span><a href="index.html" style="color:inherit">\u2190 Return to start</a></div>';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ELEMENTS
+// ══════════════════════════════════════════════════════════════
+const progressFill     = document.getElementById('progressFill');
+const hoverHint        = document.getElementById('hoverHint');
+const editPanel        = document.getElementById('editPanel');
+const toggleGroup      = document.getElementById('toggleGroup');
+const activeFilterNames= document.getElementById('activeFilterNames');
+const strideTrack      = document.getElementById('strideTrack');
+const strideThumb      = document.getElementById('strideThumb');
+const strideValEl      = document.getElementById('strideVal');
+const sizeTrack        = document.getElementById('sizeTrack');
+const sizeThumb        = document.getElementById('sizeThumb');
+const sizeValEl        = document.getElementById('sizeVal');
+const eraseTrack       = document.getElementById('eraseTrack');
+const eraseThumb       = document.getElementById('eraseThumb');
+const eraseValEl       = document.getElementById('eraseVal');
+const nextImgBtn       = document.getElementById('nextImgBtn');
+const nextStepBtn      = document.getElementById('nextStepBtn');
+const moreInfoLink     = document.getElementById('moreInfoLink');
+const floatLayer       = document.getElementById('floatLayer');
+const linesSvg         = document.getElementById('linesSvg');
+const rightCol         = document.getElementById('rightCol');
+const editView         = document.getElementById('editView');
+const editCanvas       = document.getElementById('editCanvas');
+const tooltip          = document.getElementById('tooltip');
+
+// ══════════════════════════════════════════════════════════════
+//  IMAGE PROCESSING ALGORITHMS
+// ══════════════════════════════════════════════════════════════
+const CANVAS_SIZE=1000, PIXELATE_BLOCK=14;
+const ALL_FILTERS=['red','blue','green','horizontal','vertical','diagonal'];
+const FILTER_LABELS={red:'Red Areas',blue:'Blue Areas',green:'Green Areas',horizontal:'Horizontal Lines',vertical:'Vertical Lines',diagonal:'Diagonal Lines'};
+const SLIDER_MIN=1, SLIDER_MAX=30;
+const ERASE_MIN=0, ERASE_MAX=100;
+
+function pixelate(d,b){const w=d.width,h=d.height,s=d.data,o=new Uint8ClampedArray(s.length);for(let y=0;y<h;y+=b)for(let x=0;x<w;x+=b){let r=0,g=0,bv=0,a=0,c=0;for(let yy=y;yy<y+b&&yy<h;yy++)for(let xx=x;xx<x+b&&xx<w;xx++){const i=(yy*w+xx)*4;r+=s[i];g+=s[i+1];bv+=s[i+2];a+=s[i+3];c++;}r/=c;g/=c;bv/=c;a/=c;for(let yy=y;yy<y+b&&yy<h;yy++)for(let xx=x;xx<x+b&&xx<w;xx++){const i=(yy*w+xx)*4;o[i]=r;o[i+1]=g;o[i+2]=bv;o[i+3]=a;}}return new ImageData(o,w,h);}
+function luminance(d){const s=d.data,a=new Float32Array(d.width*d.height);let p=0;for(let i=0;i<s.length;i+=4)a[p++]=0.299*s[i]+0.587*s[i+1]+0.114*s[i+2];return a;}
+function marchingSquaresPaths(mask,w,h){const segs=[],m=(x,y)=>(x>=0&&y>=0&&x<w&&y<h&&mask[y*w+x])?1:0;for(let y=0;y<h-1;y++)for(let x=0;x<w-1;x++){const a=m(x,y),b=m(x+1,y),c=m(x+1,y+1),d=m(x,y+1),code=(a<<3)|(b<<2)|(c<<1)|d;if(code===0||code===15)continue;const top=[x+.5,y],right=[x+1,y+.5],bottom=[x+.5,y+1],left=[x,y+.5];switch(code){case 1:segs.push([left,bottom]);break;case 2:segs.push([bottom,right]);break;case 3:segs.push([left,right]);break;case 4:segs.push([top,right]);break;case 5:segs.push([top,left]);segs.push([bottom,right]);break;case 6:segs.push([top,bottom]);break;case 7:segs.push([top,left]);break;case 8:segs.push([top,left]);break;case 9:segs.push([top,bottom]);break;case 10:segs.push([top,right]);segs.push([left,bottom]);break;case 11:segs.push([top,right]);break;case 12:segs.push([left,right]);break;case 13:segs.push([bottom,right]);break;case 14:segs.push([left,bottom]);break;}}const key=p=>`${p[0].toFixed(2)},${p[1].toFixed(2)}`,adj=new Map();const addEdge=(p1,p2)=>{const k1=key(p1),k2=key(p2);if(!adj.has(k1))adj.set(k1,[]);if(!adj.has(k2))adj.set(k2,[]);adj.get(k1).push(p2);adj.get(k2).push(p1);};for(const[p1,p2]of segs)addEdge(p1,p2);const used=new Set(),paths=[];for(const startKey of adj.keys()){if(used.has(startKey))continue;let currKey=startKey,prevKey=null;const path=[startKey.split(',').map(Number)];while(true){used.add(currKey);const nbs=adj.get(currKey)||[];let next=null;for(const p of nbs){const k=key(p);if(k!==prevKey){next=p;break;}}if(!next)break;prevKey=currKey;currKey=key(next);if(currKey===startKey)break;path.push(next);if(path.length>200000)break;}if(path.length>2)paths.push(path);}return paths;}
+function strokePathsToAlpha(paths,w,h,lw){const S=2,cnv=document.createElement('canvas');cnv.width=w*S;cnv.height=h*S;const g=cnv.getContext('2d');g.clearRect(0,0,cnv.width,cnv.height);g.filter='blur(0.3px)';g.strokeStyle='#fff';g.lineWidth=lw*S;g.lineJoin='round';g.lineCap='round';for(const path of paths){if(path.length<2)continue;g.beginPath();g.moveTo(path[0][0]*S,path[0][1]*S);for(let i=1;i<path.length;i++)g.lineTo(path[i][0]*S,path[i][1]*S);g.stroke();}const cnv2=document.createElement('canvas');cnv2.width=w;cnv2.height=h;const g2=cnv2.getContext('2d');g2.imageSmoothingEnabled=true;g2.drawImage(cnv,0,0,w,h);const data=g2.getImageData(0,0,w,h).data,alpha=new Uint8ClampedArray(w*h);for(let i=0;i<alpha.length;i++)alpha[i]=data[i*4+3];return alpha;}
+function colorizeFromAlpha(alpha,imgData){const w=imgData.width,h=imgData.height,out=new ImageData(w,h),src=imgData.data,dst=out.data;for(let p=0;p<w*h;p++){const a=alpha[p];if(!a)continue;const i=p*4;dst[i]=src[i];dst[i+1]=src[i+1];dst[i+2]=src[i+2];dst[i+3]=a;}return out;}
+function diagonalPreview(imgData){const lum=luminance(imgData),w=imgData.width,h=imgData.height;const kD1=[[-1,-1,1],[-1,0,1],[-1,1,1]],kD2=[[1,-1,-1],[1,0,-1],[1,1,-1]];const kH=[[-1,-2,-1],[0,0,0],[1,2,1]],kV=[[-1,0,1],[-2,0,2],[-1,0,1]];const DIAG_THRESH=18,mask=new Uint8Array(w*h);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){let d1=0,d2=0,gh=0,gv=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const pv=lum[(y+dy)*w+(x+dx)];d1+=pv*kD1[dy+1][dx+1];d2+=pv*kD2[dy+1][dx+1];gh+=pv*kH[dy+1][dx+1];gv+=pv*kV[dy+1][dx+1];}const diag=Math.max(Math.abs(d1),Math.abs(d2)),hv=Math.hypot(gh,gv);if(diag>DIAG_THRESH&&diag>hv*1.2)mask[y*w+x]=1;}return colorizeFromAlpha(strokePathsToAlpha(marchingSquaresPaths(mask,w,h),w,h,2),imgData);}
+function horizontalPreview(imgData){const lum=luminance(imgData),w=imgData.width,h=imgData.height;const k=[[-1,-1,-1],[2,2,2],[-1,-1,-1]],mask=new Uint8Array(w*h);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){let s=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)s+=lum[(y+dy)*w+(x+dx)]*k[dy+1][dx+1];if(Math.abs(s)>28)mask[y*w+x]=1;}return colorizeFromAlpha(strokePathsToAlpha(marchingSquaresPaths(mask,w,h),w,h,2),imgData);}
+function verticalPreview(imgData){const lum=luminance(imgData),w=imgData.width,h=imgData.height;const k=[[-1,2,-1],[-1,2,-1],[-1,2,-1]],mask=new Uint8Array(w*h);for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){let s=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)s+=lum[(y+dy)*w+(x+dx)]*k[dy+1][dx+1];if(Math.abs(s)>15)mask[y*w+x]=1;}return colorizeFromAlpha(strokePathsToAlpha(marchingSquaresPaths(mask,w,h),w,h,2),imgData);}
+function blobPreview(imgData,color){const src=imgData.data,out=new ImageData(imgData.width,imgData.height),dst=out.data;for(let i=0;i<src.length;i+=4){const r=src[i],g=src[i+1],b=src[i+2];if(Math.max(r,g,b)-Math.min(r,g,b)<10)continue;const mx=Math.max(r,g,b);let show=false;if(color==='red')show=(r===mx);if(color==='green')show=(g===mx);if(color==='blue')show=(b===mx);if(show){dst[i]=r;dst[i+1]=g;dst[i+2]=b;dst[i+3]=255;}}return out;}
+function computeLayer(base,fk){if(fk==='diagonal')return diagonalPreview(base);if(fk==='horizontal')return horizontalPreview(base);if(fk==='vertical')return verticalPreview(base);if(fk==='red')return blobPreview(base,'red');if(fk==='green')return blobPreview(base,'green');if(fk==='blue')return blobPreview(base,'blue');return base;}
+
+// ── Activation filter (erase pixels / blue crosses) ─────────
+function analyzeEdgeDensity(imgData,x,y,bs){
+  const{data,width,height}=imgData;let count=0;
+  for(let by=0;by<bs;by++)for(let bx=0;bx<bs;bx++){
+    const cx=x+bx,cy=y+by;if(cx>=width||cy>=height)continue;
+    const idx=(cy*width+cx)*4;const r=data[idx],g=data[idx+1],b=data[idx+2];
+    if(!(r>220&&g>220&&b>220))count++;
+  }
+  return count;
+}
+function analyzeColorIntensity(imgData,x,y,bs){
+  const{data,width,height}=imgData;let total=0;
+  for(let by=0;by<bs;by++)for(let bx=0;bx<bs;bx++){
+    const cx=x+bx,cy=y+by;if(cx>=width||cy>=height)continue;
+    const idx=(cy*width+cx)*4;const r=data[idx],g=data[idx+1],b=data[idx+2];
+    const mx=Math.max(r,g,b),mn=Math.min(r,g,b);total+=(mx-mn);
+  }
+  const pixels=bs*bs;return Math.round((total/pixels/255)*pixels);
+}
+function drawOriginalBlock(imgData,x,y,bs,ctx){
+  const{data,width,height}=imgData;
+  const bW=Math.min(bs,width-x),bH=Math.min(bs,height-y);
+  const bd=ctx.createImageData(bW,bH),dst=bd.data;
+  for(let by=0;by<bH;by++)for(let bx=0;bx<bW;bx++){
+    const si=((y+by)*width+(x+bx))*4,di=(by*bW+bx)*4;
+    dst[di]=data[si];dst[di+1]=data[si+1];dst[di+2]=data[si+2];dst[di+3]=255;
+  }
+  ctx.putImageData(bd,x,y);
+}
+function drawCross(x,y,ctx){
+  const bs=PIXELATE_BLOCK,pad=3;
+  ctx.strokeStyle='rgba(0,0,255,0.9)';ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(x+pad,y+pad);ctx.lineTo(x+bs-pad,y+bs-pad);
+  ctx.moveTo(x+bs-pad,y+pad);ctx.lineTo(x+pad,y+bs-pad);
+  ctx.stroke();
+}
+
+function applyActivationFilter(srcData, thresholdVal, activeLayers, ctx) {
+  ctx.clearRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  if(thresholdVal===0){
+    ctx.putImageData(srcData,0,0);
+    return;
+  }
+  const colorOnly=['red','green','blue'];
+  const hasColorLayer=colorOnly.some(c=>activeLayers.has(c));
+  const hasEdgeLayer=['diagonal','horizontal','vertical'].some(c=>activeLayers.has(c));
+  const minPresence=(hasColorLayer)?1:2;
+  const maxD=PIXELATE_BLOCK*PIXELATE_BLOCK;
+  const t=thresholdVal/100;
+  const effectiveMax=(hasColorLayer&&!hasEdgeLayer)?Math.max(3,Math.round(maxD*0.15)):maxD;
+  const thresh=Math.max(minPresence,Math.round(effectiveMax*Math.pow(t,1.8)));
+  for(let y=0;y<CANVAS_SIZE;y+=PIXELATE_BLOCK)for(let x=0;x<CANVAS_SIZE;x+=PIXELATE_BLOCK){
+    const bc=hasColorLayer?analyzeColorIntensity(srcData,x,y,PIXELATE_BLOCK):analyzeEdgeDensity(srcData,x,y,PIXELATE_BLOCK);
+    if(bc>=thresh)drawOriginalBlock(srcData,x,y,PIXELATE_BLOCK,ctx);
+    else if(bc>=minPresence)drawCross(x,y,ctx); // show crosses during editing
+    // else: leave white (already filled)
+  }
+}
+
+// Final version — same logic but erases cross blocks (leaves white) instead of drawing crosses
+function applyActivationFilterFinal(srcData, thresholdVal, activeLayers, ctx) {
+  ctx.fillStyle='#ffffff';ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  if(thresholdVal===0){ ctx.putImageData(srcData,0,0); return; }
+  const colorOnly=['red','green','blue'];
+  const hasColorLayer=colorOnly.some(c=>activeLayers.has(c));
+  const hasEdgeLayer=['diagonal','horizontal','vertical'].some(c=>activeLayers.has(c));
+  const minPresence=(hasColorLayer)?1:2;
+  const maxD=PIXELATE_BLOCK*PIXELATE_BLOCK;
+  const t=thresholdVal/100;
+  const effectiveMax=(hasColorLayer&&!hasEdgeLayer)?Math.max(3,Math.round(maxD*0.15)):maxD;
+  const thresh=Math.max(minPresence,Math.round(effectiveMax*Math.pow(t,1.8)));
+  for(let y=0;y<CANVAS_SIZE;y+=PIXELATE_BLOCK)for(let x=0;x<CANVAS_SIZE;x+=PIXELATE_BLOCK){
+    const bc=hasColorLayer?analyzeColorIntensity(srcData,x,y,PIXELATE_BLOCK):analyzeEdgeDensity(srcData,x,y,PIXELATE_BLOCK);
+    if(bc>=thresh)drawOriginalBlock(srcData,x,y,PIXELATE_BLOCK,ctx);
+    // weak blocks: leave white (erased) — no cross drawn
+  }
+}
+
+// Build final cleaned output (no blue crosses — erased pixels become white)
+function buildFinalOutput(s) {
+  const base=document.createElement('canvas');base.width=CANVAS_SIZE;base.height=CANVAS_SIZE;
+  const bCtx=base.getContext('2d');
+  bCtx.fillStyle='#fff';bCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  bCtx.putImageData(s.pixData,0,0);
+  let filtered=base;
+
+  if(s.activeLayers.size>0){
+    const tmp=document.createElement('canvas');tmp.width=CANVAS_SIZE;tmp.height=CANVAS_SIZE;
+    const tCtx=tmp.getContext('2d');
+    tCtx.fillStyle='#fff';tCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    for(const fk of ALL_FILTERS){
+      if(!s.activeLayers.has(fk))continue;
+      const ld=computeLayer(s.pixData,fk);
+      const lc=document.createElement('canvas');lc.width=CANVAS_SIZE;lc.height=CANVAS_SIZE;
+      lc.getContext('2d').putImageData(ld,0,0);
+      tCtx.globalAlpha=0.9;tCtx.drawImage(lc,0,0);
+    }
+    tCtx.globalAlpha=1;
+    filtered=tmp;
+  }
+
+  if(s.filterSz>1||s.strideSz>1){
+    const data=filtered.getContext('2d').getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE).data;
+    const out=document.createElement('canvas');out.width=CANVAS_SIZE;out.height=CANVAS_SIZE;
+    const rCtx=out.getContext('2d');
+    rCtx.fillStyle='#fff';rCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    for(let y=0;y<CANVAS_SIZE;y+=s.strideSz)for(let x=0;x<CANVAS_SIZE;x+=s.strideSz){
+      let rS=0,gS=0,bS=0,cnt=0;
+      for(let dy=0;dy<s.filterSz;dy++)for(let dx=0;dx<s.filterSz;dx++){
+        const px=x+dx,py=y+dy;if(px>=CANVAS_SIZE||py>=CANVAS_SIZE)continue;
+        const idx=(py*CANVAS_SIZE+px)*4;const r=data[idx],g=data[idx+1],b=data[idx+2];
+        if(r>235&&g>235&&b>235)continue;rS+=r;gS+=g;bS+=b;cnt++;
+      }
+      if(!cnt)continue;
+      rCtx.fillStyle=`rgb(${Math.round(rS/cnt)},${Math.round(gS/cnt)},${Math.round(bS/cnt)})`;
+      rCtx.fillRect(x,y,s.filterSz,s.filterSz);
+    }
+    filtered=out;
+  }
+
+  if(s.eraseVal>0){
+    const srcData=filtered.getContext('2d').getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    const out2=document.createElement('canvas');out2.width=CANVAS_SIZE;out2.height=CANVAS_SIZE;
+    const ctx2=out2.getContext('2d');
+    ctx2.fillStyle='#fff';ctx2.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    applyActivationFilterFinal(srcData,s.eraseVal,s.activeLayers,ctx2); // no crosses
+    filtered=out2;
+  }
+
+  return filtered;
+}
+
+// ── Build the composite output for a given image state ───────
+function buildOutput(s) {
+  // 1. Start with pixelated base — always white background
+  const base = document.createElement('canvas'); base.width=CANVAS_SIZE; base.height=CANVAS_SIZE;
+  const bCtx = base.getContext('2d');
+  bCtx.fillStyle='#fff'; bCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  bCtx.putImageData(s.pixData,0,0);
+
+  // 2. Apply feature filters if any selected
+  let filtered = base;
+  if(s.activeLayers.size > 0) {
+    const tmp=document.createElement('canvas');tmp.width=CANVAS_SIZE;tmp.height=CANVAS_SIZE;
+    const tCtx=tmp.getContext('2d');
+    tCtx.fillStyle='#fff';tCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    for(const fk of ALL_FILTERS){
+      if(!s.activeLayers.has(fk))continue;
+      const ld=computeLayer(s.pixData,fk);
+      const lc=document.createElement('canvas');lc.width=CANVAS_SIZE;lc.height=CANVAS_SIZE;
+      lc.getContext('2d').putImageData(ld,0,0);
+      tCtx.globalAlpha=0.9;tCtx.drawImage(lc,0,0);
+    }
+    tCtx.globalAlpha=1;
+    filtered=tmp;
+  }
+
+  // 3. Apply stride/size pooling — always fill white first
+  if(s.filterSz>1||s.strideSz>1){
+    const data=filtered.getContext('2d').getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE).data;
+    const out=document.createElement('canvas');out.width=CANVAS_SIZE;out.height=CANVAS_SIZE;
+    const rCtx=out.getContext('2d');
+    rCtx.fillStyle='#fff'; rCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE); // white bg
+    for(let y=0;y<CANVAS_SIZE;y+=s.strideSz)for(let x=0;x<CANVAS_SIZE;x+=s.strideSz){
+      let rS=0,gS=0,bS=0,cnt=0;
+      for(let dy=0;dy<s.filterSz;dy++)for(let dx=0;dx<s.filterSz;dx++){
+        const px=x+dx,py=y+dy;if(px>=CANVAS_SIZE||py>=CANVAS_SIZE)continue;
+        const idx=(py*CANVAS_SIZE+px)*4;const r=data[idx],g=data[idx+1],b=data[idx+2];
+        if(r>235&&g>235&&b>235)continue;rS+=r;gS+=g;bS+=b;cnt++;
+      }
+      if(!cnt)continue;
+      rCtx.fillStyle=`rgb(${Math.round(rS/cnt)},${Math.round(gS/cnt)},${Math.round(bS/cnt)})`;
+      rCtx.fillRect(x,y,s.filterSz,s.filterSz);
+    }
+    filtered=out;
+  }
+
+  // 4. Apply erase pixels — canvas fills white before activation filter
+  if(s.eraseVal>0){
+    const srcData=filtered.getContext('2d').getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    const out2=document.createElement('canvas');out2.width=CANVAS_SIZE;out2.height=CANVAS_SIZE;
+    const ctx2=out2.getContext('2d');
+    ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE); // white bg
+    applyActivationFilter(srcData,s.eraseVal,s.activeLayers,ctx2);
+    filtered=out2;
+  }
+
+  return filtered;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FLOATER STATE
+// ══════════════════════════════════════════════════════════════
+const floaters=[];
+const meshLines={};
+const imgStateArr=[];
+let doneCount=0;
+const doneOrder=[];
+let _merging=false;
+
+function rcSize(){return{W:rightCol.offsetWidth,H:rightCol.offsetHeight};}
+
+function updateProgress(){
+  const pct=33+(doneCount/Math.max(images.length,1))*33;
+  progressFill.style.width=pct+'%';
+  if(doneCount>=images.length){
+    nextStepBtn.classList.add('visible');
+    nextImgBtn.classList.remove('visible');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BUILD FLOATERS
+// ══════════════════════════════════════════════════════════════
+function buildFloaters(){
+  const{W,H}=rcSize();
+  images.forEach((url,idx)=>{
+    const source=wordSources[idx]||'manual';
+    const hoverColor=source==='manual'?'#E63BF2':'#f9f9f9';
+    const dotColor  =source==='manual'?'#E63BF2':'#f9f9f9';
+
+    const sImg=savedFloaters.find(f=>f.type==='img'&&f.idx===idx);
+    const sDot=savedFloaters.find(f=>f.type==='word'&&f.idx===idx);
+
+    const imgX=Math.max(0, Math.min(W-300, sImg?sImg.x:20+Math.random()*(W-340)));
+    const imgY=Math.max(0, Math.min(H-300, sImg?sImg.y:20+Math.random()*(H-340)));
+    const imgVx=sImg?sImg.vx:(Math.random()-0.5)*0.45;
+    const imgVy=sImg?sImg.vy:(Math.random()-0.5)*0.45;
+
+    const wrap=document.createElement('div');
+    wrap.className='float-img-wrap';
+    wrap.style.left=imgX+'px';wrap.style.top=imgY+'px';
+    wrap.style.setProperty('--hover-color',hoverColor);
+    wrap.dataset.idx=idx;
+
+    const imgEl=document.createElement('img');
+    imgEl.src=url;imgEl.crossOrigin='anonymous';
+    imgEl.style.cssText='width:300px;height:300px;object-fit:cover;display:block;border:1px solid transparent;box-sizing:border-box;';
+
+    const overlay=document.createElement('div');
+    overlay.className='img-overlay';
+
+    const menu=document.createElement('div');
+    menu.className='edit-menu';
+
+    const manualBtn=document.createElement('button');
+    manualBtn.className='edit-btn manual';manualBtn.textContent='Manually Edit';
+    manualBtn.addEventListener('click',e=>{e.stopPropagation();startManualEdit(idx);});
+
+    const autoBtn=document.createElement('button');
+    autoBtn.className='edit-btn automate';autoBtn.textContent='Automate Edit';
+    autoBtn.addEventListener('click',e=>{e.stopPropagation();automateEdit(idx);});
+
+    menu.appendChild(manualBtn);menu.appendChild(autoBtn);
+    wrap.appendChild(imgEl);wrap.appendChild(overlay);wrap.appendChild(menu);
+    floatLayer.appendChild(wrap);
+
+    const fImg={el:wrap,x:imgX,y:imgY,vx:imgVx,vy:imgVy,w:300,h:300,type:'img',idx,dragging:false};
+    floaters.push(fImg);
+    makeDraggable(wrap,fImg);
+
+    imgStateArr[idx]={
+      loaded:false, pixData:null, activeLayers:new Set(),
+      filterSz:1, strideSz:1, eraseVal:0,
+      done:false, wrap, imgEl, source,
+      t1Canvas: null, // snapshot after filters, used for activation
+      snapFeatures: null,   // snapshot: after features only (before sliders/erase)
+      snapSliders: null,    // snapshot: after features + sliders (before erase)
+      snapFinal: null       // snapshot: final output (after erase)
+    };
+    loadImg(url,idx);
+
+    // Word dot — plain dot, shows keyword on hover
+    const dotX = 20 + Math.random() * (W - 52);
+    const dotY = 20 + Math.random() * (H - 52);
+    const dotVx = (Math.random()-0.5)*0.45;
+    const dotVy = (Math.random()-0.5)*0.45;
+
+    const dot=document.createElement('div');
+    dot.className='float-dot';
+    dot.style.left=dotX+'px'; dot.style.top=dotY+'px';
+    dot.style.background=dotColor;
+    dot.dataset.idx=idx;
+
+    // Show keyword on hover — same style as brickbreaker float-word labels
+    const kw = (keywords[idx]||'').toUpperCase();
+    if(kw){
+      const label=document.createElement('div');
+      label.style.cssText=[
+        'display:none',
+        'position:absolute',
+        'top:16px',
+        'left:16px',
+        'font-family:\'GT Planar\',sans-serif',
+        'font-size:1.3125rem',
+        'font-weight:400',
+        'text-transform:uppercase',
+        'letter-spacing:0',
+        'color:rgba(255,255,255,0.5)',
+        'background:rgba(42,42,42,0.2)',
+        'padding:4px 10px',
+        'white-space:nowrap',
+        'pointer-events:none',
+        'z-index:20'
+      ].join(';');
+      label.textContent=kw;
+      dot.appendChild(label);
+      dot.addEventListener('mouseenter',()=>{ label.style.display='block'; });
+      dot.addEventListener('mouseleave',()=>{ label.style.display='none'; });
+    }
+
+    floatLayer.appendChild(dot);
+
+    const fDot={el:dot,x:dotX,y:dotY,vx:dotVx,vy:dotVy,w:12,h:12,type:'dot',idx,dragging:false};
+    floaters.push(fDot);
+    makeDraggable(dot,fDot);
+  });
+}
+
+function loadImg(url,idx){
+  const image=new Image();image.crossOrigin='anonymous';
+  image.onload=()=>{
+    const off=document.createElement('canvas');off.width=CANVAS_SIZE;off.height=CANVAS_SIZE;
+    const ctx=off.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    const ir=image.width/image.height;let sw,sh,sx,sy;
+    if(ir>1){sw=sh=image.height;sx=(image.width-sw)/2;sy=0;}else{sw=sh=image.width;sx=0;sy=(image.height-sw)/2;}
+    ctx.drawImage(image,sx,sy,sw,sh,0,0,CANVAS_SIZE,CANVAS_SIZE);
+    imgStateArr[idx].pixData=pixelate(ctx.getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE),PIXELATE_BLOCK);
+    imgStateArr[idx].loaded=true;
+    // If this is the active edit, refresh the canvas
+    if(activeEditIdx===idx) redrawEditCanvas();
+  };
+  image.onerror=()=>{
+    const off=document.createElement('canvas');off.width=CANVAS_SIZE;off.height=CANVAS_SIZE;
+    const c=off.getContext('2d');c.fillStyle=['#c5b4a0','#a0b4c5','#a0c5a8','#c5c0a0'][idx%4];c.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    imgStateArr[idx].pixData=pixelate(c.getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE),PIXELATE_BLOCK);
+    imgStateArr[idx].loaded=true;
+    if(activeEditIdx===idx) redrawEditCanvas();
+  };
+  image.src=url;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DRAG
+// ══════════════════════════════════════════════════════════════
+function makeDraggable(el,f){
+  let d=false,sx=0,sy=0,fx=0,fy=0;
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('edit-btn'))return;
+    e.preventDefault();e.stopPropagation();
+    d=true;f.dragging=true;el.classList.add('dragging');
+    const r=rightCol.getBoundingClientRect();
+    sx=e.clientX-r.left;sy=e.clientY-r.top;fx=f.x;fy=f.y;
+    f._svx=f.vx;f._svy=f.vy;f.vx=0;f.vy=0;
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!d)return;
+    const r=rightCol.getBoundingClientRect();
+    f.x=fx+(e.clientX-r.left-sx);f.y=fy+(e.clientY-r.top-sy);
+    el.style.left=f.x+'px';el.style.top=f.y+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!d)return;d=false;f.dragging=false;el.classList.remove('dragging');
+    f.vx=f._svx||0;f.vy=f._svy||0;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MESH LINES — full mesh: every node connects to every other node
+// ══════════════════════════════════════════════════════════════
+function drawMesh(){
+  // All nodes: visible images + all dots (word dots + done-dots)
+  const visImgs = floaters.filter(f => f.type==='img' && !imgStateArr[f.idx]?.done);
+  const allDots = floaters.filter(f => f.type==='dot');
+  const nodes   = [...visImgs, ...allDots];
+
+  // Remove lines for nodes that no longer exist
+  const nodeKeys = new Set(nodes.map(n => `${n.type}:${n.idx}:${floaters.indexOf(n)}`));
+  Object.keys(meshLines).forEach(key => {
+    const line = meshLines[key];
+    // Simple approach: rebuild all lines each frame by updating coords
+    // Keys are stored as "i-j" where i,j are indices into nodes array at time of creation
+  });
+
+  // Full mesh: connect every pair of nodes
+  // Use stable key = sorted floater indices
+  const activeKeys = new Set();
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const fi=floaters.indexOf(nodes[i]);
+      const fj=floaters.indexOf(nodes[j]);
+      const key=`${Math.min(fi,fj)}-${Math.max(fi,fj)}`;
+      activeKeys.add(key);
+      if(!meshLines[key]){
+        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('stroke','#6a6a6a');line.setAttribute('stroke-width','1');
+        meshLines[key]=line;linesSvg.appendChild(line);
+      }
+      const a=nodes[i], b=nodes[j];
+      const ax=a.x+(a.w||12)/2, ay=a.y+(a.type==='img'?150:(a.h||12)/2);
+      const bx=b.x+(b.w||12)/2, by=b.y+(b.type==='img'?150:(b.h||12)/2);
+      meshLines[key].setAttribute('x1',ax);meshLines[key].setAttribute('y1',ay);
+      meshLines[key].setAttribute('x2',bx);meshLines[key].setAttribute('y2',by);
+    }
+  }
+  // Remove stale lines
+  Object.keys(meshLines).forEach(key=>{
+    if(!activeKeys.has(key)){meshLines[key].remove();delete meshLines[key];}
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ══════════════════════════════════════════════════════════════
+function tick(){
+  if(_merging){ requestAnimationFrame(tick); return; }
+  const compActive = compositeView.classList.contains('visible');
+  const{W,H} = compActive
+    ? {W: compDotLayer.offsetWidth, H: compDotLayer.offsetHeight}
+    : rcSize();
+  const M=10;
+  floaters.forEach(f=>{
+    if(f.dragging||editView.classList.contains('visible'))return;
+    f.x+=f.vx;f.y+=f.vy;
+    if(f.x<=M){f.x=M;f.vx=Math.abs(f.vx)*(0.9+Math.random()*0.2);}
+    if(f.x+f.w>=W-M){f.x=W-f.w-M;f.vx=-Math.abs(f.vx)*(0.9+Math.random()*0.2);}
+    if(f.y<=M){f.y=M;f.vy=Math.abs(f.vy)*(0.9+Math.random()*0.2);}
+    if(f.y+f.h>=H-M){f.y=H-f.h-M;f.vy=-Math.abs(f.vy)*(0.9+Math.random()*0.2);}
+    if(Math.random()<0.002){const a=Math.random()*Math.PI*2,s=0.2+Math.random()*0.35;f.vx=Math.cos(a)*s;f.vy=Math.sin(a)*s;}
+    f.el.style.left=f.x+'px';f.el.style.top=f.y+'px';
+  });
+  drawMesh();
+  requestAnimationFrame(tick);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EDIT CANVAS — redraws live filter output
+// ══════════════════════════════════════════════════════════════
+let activeEditIdx=-1;
+
+function redrawEditCanvas(){
+  if(activeEditIdx<0)return;
+  const s=imgStateArr[activeEditIdx];
+  const ctx=editCanvas.getContext('2d');
+  // Always paint white background first
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  if(!s.loaded)return;
+  const out=buildOutput(s);
+  ctx.drawImage(out,0,0);
+  // Update floating thumbnail
+  const tmp=document.createElement('canvas');tmp.width=300;tmp.height=300;
+  tmp.getContext('2d').drawImage(out,0,0,300,300);
+  s.imgEl.src=tmp.toDataURL();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FILTER TOGGLE BUTTONS
+// ══════════════════════════════════════════════════════════════
+function updateActiveFilterNames(idx){
+  activeFilterNames.innerHTML='';
+  const s=imgStateArr[idx];
+  for(const fk of ALL_FILTERS){
+    if(!s.activeLayers.has(fk))continue;
+    const div=document.createElement('div');
+    div.className='active-filter-pill';
+    div.textContent=FILTER_LABELS[fk];
+    activeFilterNames.appendChild(div);
+  }
+}
+
+// Wire up toggle buttons
+document.querySelectorAll('.toggle-btn').forEach(btn=>{
+  const fk=btn.dataset.filter;
+  const label=FILTER_LABELS[fk]||fk;
+
+  // Tooltip on hover
+  btn.addEventListener('mouseenter',e=>{
+    tooltip.textContent=label;
+    tooltip.style.display='block';
+    tooltip.style.left=(e.clientX+14)+'px';
+    tooltip.style.top=(e.clientY+14)+'px';
+  });
+  btn.addEventListener('mousemove',e=>{
+    tooltip.style.left=(e.clientX+14)+'px';
+    tooltip.style.top=(e.clientY+14)+'px';
+  });
+  btn.addEventListener('mouseleave',()=>{ tooltip.style.display='none'; });
+
+  btn.addEventListener('click',()=>{
+    if(activeEditIdx<0)return;
+    const s=imgStateArr[activeEditIdx];
+    if(s.activeLayers.has(fk))s.activeLayers.delete(fk);
+    else s.activeLayers.add(fk);
+    btn.classList.toggle('active');
+    updateActiveFilterNames(activeEditIdx);
+    redrawEditCanvas();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+//  SLIDERS
+// ══════════════════════════════════════════════════════════════
+let strideVal=1,sizeVal=1,eraseVal=0;
+let draggingSlider=null;
+
+function sliderPctToVal(p,mn,mx){return Math.round(p*(mx-mn)+mn);}
+function sliderValToPct(v,mn,mx){return(v-mn)/(mx-mn);}
+function applySliderThumb(track,thumb,pct){
+  const r=track.getBoundingClientRect(),tw=thumb.offsetWidth||12;
+  thumb.style.left=Math.round(pct*(r.width-tw))+'px';
+}
+function getSliderPct(track,clientX){
+  const r=track.getBoundingClientRect();return Math.max(0,Math.min(1,(clientX-r.left-6)/(r.width-12)));
+}
+
+function initSliders(s){
+  strideVal=s.strideSz; sizeVal=s.filterSz; eraseVal=s.eraseVal;
+  strideValEl.textContent=strideVal; sizeValEl.textContent=sizeVal; eraseValEl.textContent=eraseVal;
+  requestAnimationFrame(()=>{
+    applySliderThumb(strideTrack,strideThumb,sliderValToPct(strideVal,SLIDER_MIN,SLIDER_MAX));
+    applySliderThumb(sizeTrack,sizeThumb,sliderValToPct(sizeVal,SLIDER_MIN,SLIDER_MAX));
+    applySliderThumb(eraseTrack,eraseThumb,sliderValToPct(eraseVal,ERASE_MIN,ERASE_MAX));
+  });
+}
+
+function handleSliderDown(e,type){
+  draggingSlider=type;e.preventDefault();
+  const track=type==='stride'?strideTrack:type==='size'?sizeTrack:eraseTrack;
+  const pct=getSliderPct(track,e.clientX);
+  updateSlider(type,pct);
+}
+function updateSlider(type,pct){
+  const s=imgStateArr[activeEditIdx];if(!s)return;
+  if(type==='stride'){
+    strideVal=sliderPctToVal(pct,SLIDER_MIN,SLIDER_MAX);
+    applySliderThumb(strideTrack,strideThumb,pct);
+    strideValEl.textContent=strideVal;
+    s.strideSz=strideVal;
+  }else if(type==='size'){
+    sizeVal=sliderPctToVal(pct,SLIDER_MIN,SLIDER_MAX);
+    applySliderThumb(sizeTrack,sizeThumb,pct);
+    sizeValEl.textContent=sizeVal;
+    s.filterSz=sizeVal;
+  }else{
+    eraseVal=sliderPctToVal(pct,ERASE_MIN,ERASE_MAX);
+    applySliderThumb(eraseTrack,eraseThumb,pct);
+    eraseValEl.textContent=eraseVal;
+    s.eraseVal=eraseVal;
+  }
+  redrawEditCanvas();
+}
+
+strideTrack.addEventListener('mousedown',e=>handleSliderDown(e,'stride'));
+sizeTrack.addEventListener('mousedown',e=>handleSliderDown(e,'size'));
+eraseTrack.addEventListener('mousedown',e=>handleSliderDown(e,'erase'));
+
+document.addEventListener('mousemove',e=>{
+  if(!draggingSlider)return;
+  const track=draggingSlider==='stride'?strideTrack:draggingSlider==='size'?sizeTrack:eraseTrack;
+  updateSlider(draggingSlider,getSliderPct(track,e.clientX));
+});
+document.addEventListener('mouseup',()=>{draggingSlider=null;});
+
+// ══════════════════════════════════════════════════════════════
+//  START MANUAL EDIT
+// ══════════════════════════════════════════════════════════════
+function startManualEdit(idx){
+  if(imgStateArr[idx].done)return;
+  activeEditIdx=idx;
+  editStartTimes[idx] = Date.now(); // start per-image manual timer
+
+  // Show left panel
+  hoverHint.style.display='none';
+  editPanel.classList.add('visible');
+
+  // Restore toggle button states
+  document.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.classList.toggle('active',imgStateArr[idx].activeLayers.has(btn.dataset.filter));
+  });
+  updateActiveFilterNames(idx);
+  initSliders(imgStateArr[idx]);
+
+  // Hide web, show white-bg canvas
+  rightCol.classList.add('editing');
+  const{W,H}=rcSize();
+  editCanvas.width=CANVAS_SIZE; editCanvas.height=CANVAS_SIZE;
+  editCanvas.style.width=W+'px'; editCanvas.style.height=H+'px';
+  editView.classList.add('visible');
+  // Fill white first so background is always white
+  const ctx=editCanvas.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  redrawEditCanvas();
+
+  // Show Next Image button
+  nextImgBtn.classList.add('visible');
+  nextStepBtn.classList.remove('visible');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CLOSE EDIT — Next Image clicked
+// ══════════════════════════════════════════════════════════════
+nextImgBtn.addEventListener('click',()=>{
+  if(activeEditIdx<0)return;
+  const idx=activeEditIdx;
+
+  // Record extra manual edit time for this image
+  if(editStartTimes[idx]) {
+    editTimes[idx] = (editTimes[idx]||0) + (Date.now() - editStartTimes[idx]);
+    delete editStartTimes[idx];
+  }
+
+  // Take snapshots for download
+  const s = imgStateArr[idx];
+  if (s && s.loaded) {
+    // Snapshot 1: features only (no sliders, no erase)
+    (function() {
+      const base = document.createElement('canvas'); base.width=CANVAS_SIZE; base.height=CANVAS_SIZE;
+      const bCtx = base.getContext('2d');
+      bCtx.fillStyle='#fff'; bCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+      bCtx.putImageData(s.pixData,0,0);
+      if (s.activeLayers.size > 0) {
+        const tmp=document.createElement('canvas'); tmp.width=CANVAS_SIZE; tmp.height=CANVAS_SIZE;
+        const tCtx=tmp.getContext('2d');
+        tCtx.fillStyle='#fff'; tCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+        for(const fk of ALL_FILTERS){ if(!s.activeLayers.has(fk))continue; const ld=computeLayer(s.pixData,fk); const lc=document.createElement('canvas'); lc.width=CANVAS_SIZE; lc.height=CANVAS_SIZE; lc.getContext('2d').putImageData(ld,0,0); tCtx.globalAlpha=0.9; tCtx.drawImage(lc,0,0); } tCtx.globalAlpha=1;
+        s.snapFeatures = tmp;
+      } else { s.snapFeatures = base; }
+    })();
+
+    // Snapshot 2: erase with crosses (features + erase WITH blue crosses)
+    (function() {
+      const base = document.createElement('canvas'); base.width=CANVAS_SIZE; base.height=CANVAS_SIZE;
+      const bCtx = base.getContext('2d');
+      bCtx.fillStyle='#fff'; bCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+      bCtx.putImageData(s.pixData,0,0);
+      let filtered = base;
+      if(s.activeLayers.size > 0){
+        const tmp=document.createElement('canvas'); tmp.width=CANVAS_SIZE; tmp.height=CANVAS_SIZE;
+        const tCtx=tmp.getContext('2d'); tCtx.fillStyle='#fff'; tCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+        for(const fk of ALL_FILTERS){ if(!s.activeLayers.has(fk))continue; const ld=computeLayer(s.pixData,fk); const lc=document.createElement('canvas'); lc.width=CANVAS_SIZE; lc.height=CANVAS_SIZE; lc.getContext('2d').putImageData(ld,0,0); tCtx.globalAlpha=0.9; tCtx.drawImage(lc,0,0); } tCtx.globalAlpha=1; filtered=tmp;
+      }
+      if(s.eraseVal > 0){
+        const srcData = filtered.getContext('2d').getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE);
+        const out2 = document.createElement('canvas'); out2.width=CANVAS_SIZE; out2.height=CANVAS_SIZE;
+        const ctx2 = out2.getContext('2d');
+        ctx2.fillStyle='#fff'; ctx2.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+        applyActivationFilter(srcData, s.eraseVal, s.activeLayers, ctx2); // WITH crosses
+        s.snapSliders = out2;
+      } else {
+        s.snapSliders = filtered;
+      }
+    })();
+
+    // Snapshot 3: final clean output (buildFinalOutput — no crosses)
+    s.snapFinal = buildFinalOutput(s);
+  }
+
+  // Mark done — image becomes a 12px dot (pink for manual)
+  markDone(idx, 'manual');
+
+  // Close edit view, restore web
+  activeEditIdx=-1;
+  editView.classList.remove('visible');
+  rightCol.classList.remove('editing');
+  editPanel.classList.remove('visible');
+  hoverHint.style.display='';
+  nextImgBtn.classList.remove('visible');
+});
+
+function markDone(idx, editType){
+  const s=imgStateArr[idx];
+  s.done=true;
+  const dotColor = editType==='manual' ? '#E63BF2' : '#f9f9f9';
+
+  // Find the image floater's current position — done-dot spawns near image center
+  const imgF=floaters.find(f=>f.type==='img'&&f.idx===idx);
+  const{W,H}=rcSize();
+  const startX = imgF ? Math.max(0,Math.min(W-12, imgF.x+144)) : 20+Math.random()*(W-52);
+  const startY = imgF ? Math.max(0,Math.min(H-12, imgF.y+144)) : 20+Math.random()*(H-52);
+
+  // Hide the full image wrap
+  s.wrap.style.display='none';
+
+  // Build final clean output (crosses erased = white, no blue crosses)
+  let previewSrc = s.imgEl.src;
+  if(s.loaded){
+    const finalOut = buildFinalOutput(s);
+    // Store clean src on imgEl so mesh/preview use clean version
+    const tmp300=document.createElement('canvas');tmp300.width=300;tmp300.height=300;
+    tmp300.getContext('2d').drawImage(finalOut,0,0,300,300);
+    s.imgEl.src = tmp300.toDataURL();
+    // 150px preview
+    const tmp150=document.createElement('canvas');tmp150.width=150;tmp150.height=150;
+    tmp150.getContext('2d').drawImage(finalOut,0,0,150,150);
+    previewSrc = tmp150.toDataURL();
+  }
+
+  // Spawn done-dot as type 'dot' so drawMesh connects it to remaining images
+  const doneDot=document.createElement('div');
+  doneDot.className='float-dot';
+  doneDot.style.left=startX+'px'; doneDot.style.top=startY+'px';
+  doneDot.style.background=dotColor;
+  doneDot.style.overflow='visible';
+
+  // Hover preview — 150×150 + 50% overlay, no crosses
+  const preview=document.createElement('div');
+  preview.style.cssText='display:none;position:absolute;top:16px;left:16px;width:150px;height:150px;pointer-events:none;z-index:20;';
+  const previewImg=document.createElement('img');
+  previewImg.style.cssText='width:150px;height:150px;object-fit:cover;display:block;';
+  previewImg.src=previewSrc;
+  const previewOverlay=document.createElement('div');
+  previewOverlay.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,0.5);pointer-events:none;';
+  preview.appendChild(previewImg);
+  preview.appendChild(previewOverlay);
+  doneDot.appendChild(preview);
+  doneDot.addEventListener('mouseenter',()=>{ preview.style.display='block'; });
+  doneDot.addEventListener('mouseleave',()=>{ preview.style.display='none'; });
+
+  floatLayer.appendChild(doneDot);
+
+  const vx=(Math.random()-0.5)*0.45, vy=(Math.random()-0.5)*0.45;
+  // type:'dot' so drawMesh includes it in the web
+  const fDone={el:doneDot,x:startX,y:startY,vx,vy,w:12,h:12,type:'dot',idx,dragging:false};
+  floaters.push(fDone);
+  makeDraggable(doneDot,fDone);
+
+  doneCount++;
+  doneOrder.push(idx);
+  updateProgress();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AUTOMATE EDIT
+// ══════════════════════════════════════════════════════════════
+function automateEdit(idx){
+  if(imgStateArr[idx].done)return;
+  const s=imgStateArr[idx];
+  // No extra manual time — just clear any in-progress timer
+  delete editStartTimes[idx];
+  const shuffled=ALL_FILTERS.slice().sort(()=>Math.random()-0.5);
+  s.activeLayers=new Set(shuffled.slice(0,1+Math.floor(Math.random()*ALL_FILTERS.length)));
+  const kv=1+Math.floor(Math.random()*29);
+  s.filterSz=kv;s.strideSz=kv;
+  s.eraseVal=Math.floor(Math.random()*60);
+  // Take snapshots for automated edits too
+  if (s.loaded) {
+    // features only
+    (function(){const base=document.createElement('canvas');base.width=CANVAS_SIZE;base.height=CANVAS_SIZE;const bCtx=base.getContext('2d');bCtx.fillStyle='#fff';bCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);bCtx.putImageData(s.pixData,0,0);if(s.activeLayers.size>0){const tmp=document.createElement('canvas');tmp.width=CANVAS_SIZE;tmp.height=CANVAS_SIZE;const tCtx=tmp.getContext('2d');tCtx.fillStyle='#fff';tCtx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);for(const fk of ALL_FILTERS){if(!s.activeLayers.has(fk))continue;const ld=computeLayer(s.pixData,fk);const lc=document.createElement('canvas');lc.width=CANVAS_SIZE;lc.height=CANVAS_SIZE;lc.getContext('2d').putImageData(ld,0,0);tCtx.globalAlpha=0.9;tCtx.drawImage(lc,0,0);}tCtx.globalAlpha=1;s.snapFeatures=tmp;}else{s.snapFeatures=base;}})();
+    s.snapFinal=buildFinalOutput(s);
+    s.snapSliders=s.snapFinal; // automated: no distinct slider step
+  }
+  markDone(idx,'auto');
+  if(activeEditIdx===idx){
+    activeEditIdx=-1;
+    editView.classList.remove('visible');
+    rightCol.classList.remove('editing');
+    editPanel.classList.remove('visible');
+    hoverHint.style.display='';
+    nextImgBtn.classList.remove('visible');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MISC
+// ══════════════════════════════════════════════════════════════
+moreInfoLink.addEventListener('click',()=>{
+  alert('Step 2: Hover each image and choose how to edit it. Manually select filters and adjust sliders, then click Next Image. Or click Automate Edit for automatic processing.');
+});
+
+nextStepBtn.addEventListener('click',()=>{
+  // Only count time spent inside the edit panel per image
+  const allEditTimes = images.map((_, i) => editTimes[i] || 0);
+  try { sessionStorage.setItem('BRICK_BREAKER_EDIT_TIMES', JSON.stringify(allEditTimes)); } catch(_) {}
+  startCompositeTransition();
+});
+
+// ─────────────────────────────────────────────────────────────
+//  COMPOSITE VIEW
+// ─────────────────────────────────────────────────────────────
+const compositeView    = document.getElementById('compositeView');
+const compOutputCanvas = document.getElementById('compOutputCanvas');
+const compDotLayer     = document.getElementById('compDotLayer');
+const generateBtn      = document.getElementById('generateBtn');
+
+let _generatedImageData = null;
+let _generatedImgUrl    = null;
+let _compNoiseRaf       = null;
+let _denoiseRunning     = false;
+let _noiseAnimFrame     = null;
+
+// Count pink vs white dots to determine merged dot color
+function getMergedDotColor() {
+  let pink = 0, white = 0;
+  floaters.forEach(f => {
+    if (f.type !== 'dot') return;
+    const bg = f.el.style.background || '';
+    if (bg === '#E63BF2') pink++;
+    else white++;
+  });
+  return pink >= white ? '#E63BF2' : '#f9f9f9';
+}
+
+function buildCompositeImage() {
+  const allPixelData = [];
+  images.forEach((_, i) => {
+    const s = imgStateArr[i];
+    if (!s || !s.done) return;
+    const fc = buildFinalOutput(s);
+    allPixelData.push(fc.getContext('2d').getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE).data);
+  });
+  if (!allPixelData.length) return null;
+  const numImgs = allPixelData.length;
+  const tmp = document.createElement('canvas');
+  tmp.width = CANVAS_SIZE; tmp.height = CANVAS_SIZE;
+  const ctx = tmp.getContext('2d');
+  const avg = ctx.createImageData(CANVAS_SIZE, CANVAS_SIZE);
+  const total = CANVAS_SIZE * CANVAS_SIZE * 4;
+  for (let p = 0; p < total; p += 4) {
+    let rSum=0, gSum=0, bSum=0, count=0;
+    for (let img=0; img<numImgs; img++) {
+      const r=allPixelData[img][p], g=allPixelData[img][p+1], b=allPixelData[img][p+2];
+      if (r>240 && g>240 && b>240) continue;
+      rSum+=r; gSum+=g; bSum+=b; count++;
+    }
+    if (count > 0) {
+      avg.data[p]   = Math.round(rSum/count);
+      avg.data[p+1] = Math.round(gSum/count);
+      avg.data[p+2] = Math.round(bSum/count);
+      avg.data[p+3] = 255;
+    } else {
+      avg.data[p]=255; avg.data[p+1]=255; avg.data[p+2]=255; avg.data[p+3]=255;
+    }
+  }
+  ctx.putImageData(avg, 0, 0);
+  return tmp;
+}
+
+function startCompositeTransition() {
+  // Stop the tick loop from moving floaters
+  _merging = true;
+
+  const rcW = rightCol.offsetWidth;
+  const rcH = rightCol.offsetHeight;
+  const targetX = rcW / 2 - 6;
+  const targetY = rcH / 2 - 6;
+
+  // Snapshot current positions of all dots + word dots
+  const movingFloaters = floaters.filter(f => f.type === 'dot');
+
+  // Duration of fly-in animation
+  const DURATION = 1000; // ms
+  const start = performance.now();
+
+  // Record start positions
+  const starts = movingFloaters.map(f => ({ x: f.x, y: f.y }));
+
+  // Also animate SVG lines — update them via their floater positions
+  function animateFrame(now) {
+    const t = Math.min((now - start) / DURATION, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+    movingFloaters.forEach((f, i) => {
+      f.x = starts[i].x + (targetX - starts[i].x) * ease;
+      f.y = starts[i].y + (targetY - starts[i].y) * ease;
+      f.el.style.left = f.x + 'px';
+      f.el.style.top  = f.y + 'px';
+    });
+
+    drawMesh(); // keep lines connected during animation
+
+    if (t < 1) {
+      requestAnimationFrame(animateFrame);
+      if (t > 0.85 && !compositeView.classList.contains('visible')) {
+        finishCompositeTransition(movingFloaters[0]);
+      }
+    }
+  }
+  requestAnimationFrame(animateFrame);
+}
+
+function finishCompositeTransition(carrierFloater) {
+  compositeView.classList.add('visible');
+  progressFill.style.width = '75%';
+  const dotColor = getMergedDotColor();
+
+  // Reuse the surviving floater — just restyle and move to compDotLayer
+  const mergedDot = carrierFloater.el;
+  mergedDot.querySelectorAll('div').forEach(d => d.remove());
+  mergedDot.className = 'float-dot';
+  mergedDot.style.background = dotColor;
+  mergedDot.style.cursor = 'pointer';
+  mergedDot.addEventListener('click', onMergedDotClick);
+  compDotLayer.appendChild(mergedDot);
+
+  // Remove all other dot floaters from the DOM
+  floaters.forEach(f => { if (f !== carrierFloater && f.type === 'dot') f.el.remove(); });
+  const keep = floaters.filter(f => f !== carrierFloater || f.type !== 'dot');
+  floaters.length = 0;
+  // Keep only carrierFloater, update its type
+  carrierFloater.type = 'merged';
+  floaters.push(carrierFloater);
+
+  setTimeout(() => {
+    const compCanvas = buildCompositeImage();
+    if (compCanvas) {
+      compOutputCanvas.width = CANVAS_SIZE; compOutputCanvas.height = CANVAS_SIZE;
+      const ctx = compOutputCanvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      ctx.drawImage(compCanvas, 0, 0);
+      compOutputCanvas.style.width = '100%'; compOutputCanvas.style.height = '100%';
+      _generatedImageData = null;
+      startImageGeneration(compCanvas);
+    }
+  }, 400);
+
+  generateBtn.classList.add('visible');
+  _merging = false;
+  requestAnimationFrame(tick);
+}
+
+function onMergedDotClick() {
+  // Hide the dot
+  compDotLayer.innerHTML = '';
+  // Show composite image (no noise)
+  compOutputCanvas.style.display = 'block';
+}
+
+const denoiseCanvas  = document.getElementById('denoiseCanvas');
+const cookingText    = document.getElementById('cookingText');
+const cookingTooltip = document.getElementById('cookingTooltip');
+const compCenterBtns = document.getElementById('compCenterBtns');
+const viewStatsBtn   = document.getElementById('viewStatsBtn');
+const downloadBtn    = document.getElementById('downloadBtn');
+const processBtn     = document.getElementById('processBtn');
+const compRightCol   = document.getElementById('compRightCol');
+const compGhostText  = document.getElementById('compGhostText');
+
+// Cooking tooltip on hover
+cookingText.addEventListener('mouseenter', () => { cookingTooltip.style.display = 'block'; });
+cookingText.addEventListener('mousemove', e => {
+  cookingTooltip.innerHTML = 'Your edited images are merged and sent to an AI model to create a new image';
+  cookingTooltip.style.left = (e.clientX + 14) + 'px';
+  cookingTooltip.style.top  = (e.clientY - 36) + 'px';
+});
+cookingText.addEventListener('mouseleave', () => { cookingTooltip.style.display = 'none'; });
+
+generateBtn.addEventListener('click', () => {
+  generateBtn.classList.remove('visible');
+  generateBtn.disabled = true;
+  compGhostText.style.display = 'none';
+  cookingText.classList.add('visible');
+  compDotLayer.innerHTML = '';
+  compOutputCanvas.style.display = 'block';
+
+  // Noise canvas setup
+  denoiseCanvas.style.display = 'block';
+  denoiseCanvas.width  = compRightCol.offsetWidth;
+  denoiseCanvas.height = compRightCol.offsetHeight;
+  const dCtx = denoiseCanvas.getContext('2d');
+  let _grainInterval = null;
+
+  function drawGrain(opacity) {
+    const W = denoiseCanvas.width, H = denoiseCanvas.height;
+    const id = dCtx.createImageData(W, H);
+    const d  = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const g = Math.floor(Math.random() * 255);
+      d[i]=g; d[i+1]=g; d[i+2]=g; d[i+3]=Math.floor(opacity*255);
+    }
+    dCtx.putImageData(id, 0, 0);
+  }
+
+  drawGrain(0.92);
+  _grainInterval = setInterval(() => drawGrain(0.92), 1000/24);
+
+  function startDenoise(imageData) {
+    clearInterval(_grainInterval);
+    compOutputCanvas.width  = CANVAS_SIZE;
+    compOutputCanvas.height = CANVAS_SIZE;
+    compOutputCanvas.style.width  = '100%';
+    compOutputCanvas.style.height = '100%';
+    compOutputCanvas.getContext('2d').putImageData(imageData, 0, 0);
+
+    const STEPS = 80, STEP_MS = 75;
+    let step = 0;
+    function denoiseStep() {
+      const t = step / STEPS;
+      drawGrain(0.92 * (1 - t * t));
+      step++;
+      if (step <= STEPS) {
+        setTimeout(denoiseStep, STEP_MS);
+      } else {
+        denoiseCanvas.style.display = 'none';
+        cookingText.classList.remove('visible');
+        compCenterBtns.classList.add('visible');
+        downloadBtn.classList.add('visible');
+        processBtn.classList.add('visible');
+        viewStatsBtn.classList.add('visible');
+        progressFill.style.width = '100%';
+      }
+    }
+    denoiseStep();
+  }
+
+  if (_generatedImageData) {
+    startDenoise(_generatedImageData);
+  } else {
+    const poll = setInterval(() => {
+      if (_generatedImageData) { clearInterval(poll); startDenoise(_generatedImageData); }
+    }, 500);
+  }
+});
+
+// ── DOWNLOAD ──────────────────────────────────────────────────
+downloadBtn.addEventListener('click', async () => {
+  if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
+  downloadBtn.textContent = 'Zipping...';
+  downloadBtn.disabled = true;
+
+  const zip = new JSZip();
+  const kws = keywords.length ? keywords : images.map((_,i)=>`image${i+1}`);
+
+  // Helper: canvas → blob → zip
+  async function addCanvas(canvas, filename) {
+    if (!canvas) return;
+    return new Promise(resolve => {
+      canvas.toBlob(blob => { if (blob) zip.file(filename, blob); resolve(); }, 'image/png');
+    });
+  }
+
+  // Helper: fetch URL → blob → zip (for original images at original dimensions)
+  async function addUrl(url, filename) {
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      zip.file(filename, blob);
+    } catch(e) {
+      // If CORS fails, skip
+      console.warn('Could not fetch', url);
+    }
+  }
+
+  const promises = [];
+
+  for (let i = 0; i < images.length; i++) {
+    const kw = (kws[i] || `image${i+1}`).toLowerCase().replace(/[^a-z0-9]/g,'-');
+    const s = imgStateArr[i];
+
+    // 1. Original image (original dimensions) — named after URL
+const urlFilename = images[i].split('/').pop().split('?')[0] || `${kw}-01-original.png`;
+promises.push(addUrl(images[i], `01-original-${urlFilename}`));
+
+    if (s) {
+      // 2. After features selected
+      promises.push(addCanvas(s.snapFeatures, `${kw}-02-chosen-features.png`));
+      // 3. Erase pixels with blue crosses
+      promises.push(addCanvas(s.snapSliders,  `${kw}-03-erase-crosses.png`));
+      // 4. Final edited image (clean, no crosses)
+      promises.push(addCanvas(s.snapFinal,    `${kw}-04-final-edit.png`));
+    }
+  }
+
+  // 5. Composite (averaged feature maps before generation)
+  const compCanvas = buildCompositeImage();
+  if (compCanvas) promises.push(addCanvas(compCanvas, 'composite-05.png'));
+
+  // 6. Final generated image
+  if (_generatedImageData) {
+    const genCanvas = document.createElement('canvas');
+    genCanvas.width = CANVAS_SIZE; genCanvas.height = CANVAS_SIZE;
+    genCanvas.getContext('2d').putImageData(_generatedImageData, 0, 0);
+    promises.push(addCanvas(genCanvas, 'generated-06-final.png'));
+  }
+
+  await Promise.all(promises);
+
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'brickbreaker-images.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+
+  downloadBtn.textContent = 'Download';
+  downloadBtn.disabled = false;
+});
+
+// ── PROCESS / OUTPUT ──────────────────────────────────────────
+let _processInterval = null;
+let _processActive   = false;
+
+processBtn.addEventListener('click', () => {
+  if (!_processActive) {
+    _processActive = true;
+    processBtn.textContent = 'Output';
+    startProcessAnimation();
+  } else {
+    _processActive = false;
+    processBtn.textContent = 'Process';
+    stopProcessAnimation();
+    if (_generatedImageData) {
+      compOutputCanvas.width  = CANVAS_SIZE;
+      compOutputCanvas.height = CANVAS_SIZE;
+      compOutputCanvas.style.width  = '100%';
+      compOutputCanvas.style.height = '100%';
+      compOutputCanvas.getContext('2d').putImageData(_generatedImageData, 0, 0);
+    }
+  }
+});
+
+function buildProcessFrames() {
+  const frames = [];
+  doneOrder.forEach(idx => {
+    const s = imgStateArr[idx];
+    if (!s || !s.done) return;
+    const fc = buildFinalOutput(s);
+    frames.push({ canvas: fc, isLast: false });
+  });
+  const comp = buildCompositeImage();
+  if (comp) frames.push({ canvas: comp, isLast: false });
+  if (_generatedImageData) {
+    const gc = document.createElement('canvas');
+    gc.width = CANVAS_SIZE; gc.height = CANVAS_SIZE;
+    gc.getContext('2d').putImageData(_generatedImageData, 0, 0);
+    frames.push({ canvas: gc, isLast: true });
+  }
+  return frames;
+}
+
+function startProcessAnimation() {
+  const frames = buildProcessFrames();
+  if (!frames.length) return;
+  const ctx = compOutputCanvas.getContext('2d');
+  compOutputCanvas.width  = CANVAS_SIZE;
+  compOutputCanvas.height = CANVAS_SIZE;
+  compOutputCanvas.style.width  = '100%';
+  compOutputCanvas.style.height = '100%';
+  let idx = 0;
+
+  function showFrame() {
+    if (!_processActive) return;
+    const frame = frames[idx];
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.drawImage(frame.canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    idx = (idx + 1) % frames.length;
+    _processInterval = setTimeout(showFrame, frame.isLast ? 2000 : 1000);
+  }
+  showFrame();
+}
+
+function stopProcessAnimation() {
+  if (_processInterval) { clearTimeout(_processInterval); _processInterval = null; }
+}
+
+// ── VIEW STATS ────────────────────────────────────────────────
+viewStatsBtn.addEventListener('click', () => { showDataViz(); });
+
+document.getElementById('compMoreInfoLink').addEventListener('click', () => {
+  alert('Step 3: Your edited images are composited together and sent to an AI model to generate a final image.');
+});
+
+// ─────────────────────────────────────────────────────────────
+//  IMAGE GENERATION — Replicate stable-diffusion-img2img
+// ─────────────────────────────────────────────────────────────
+const REPLICATE_API_KEY = 'r8_225EDNN5U17VM58s07bsdnt7wIBg9Vb2RWsRk';
+// Prompt: no category constraints — let the composite structure drive the output
+const GEN_PROMPT = 'Using the input image as a loose inspiration for mood, color palette and structure only, generate a completely original photorealistic image. Create something entirely new. Do not generate people';
+const _genOffscreen = document.createElement('canvas');
+async function startImageGeneration(compCanvas) {
+  try {
+    const imageBase64 = compCanvas.toDataURL('image/png');
+    const startRes = await fetch('https://autumn-hill-612b.solaa086.workers.dev/v1/models/google/gemini-2.5-flash-image/predictions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: {
+          prompt: GEN_PROMPT,
+          image_input: [imageBase64],
+          aspect_ratio: '1:1',
+          output_format: 'jpg'
+        }
+      })
+    });
+    if (!startRes.ok) {
+      const errText = await startRes.text();
+      throw new Error('Failed to start: ' + startRes.status + ' ' + errText);
+    }
+    const prediction = await startRes.json();
+    let result = null;
+    for (let attempt = 0; attempt < 90; attempt++) {
+      await new Promise(r => setTimeout(r, 2000));
+      const pollRes = await fetch(`https://autumn-hill-612b.solaa086.workers.dev/v1/predictions/${prediction.id}`);
+      const pollData = await pollRes.json();
+      if (pollData.status === 'succeeded') { result = pollData.output; break; }
+      else if (pollData.status === 'failed' || pollData.status === 'canceled') throw new Error('Generation failed: ' + pollData.error);
+    }
+    if (!result) throw new Error('Timed out');
+    const imgUrl = Array.isArray(result) ? result[0] : (typeof result === 'object' && result.url ? result.url() : result);
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      _genOffscreen.width = CANVAS_SIZE; _genOffscreen.height = CANVAS_SIZE;
+      const offCtx = _genOffscreen.getContext('2d');
+      offCtx.drawImage(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      _generatedImageData = offCtx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      _generatedImgUrl = imgUrl;
+    };
+    img.src = imgUrl;
+  } catch(err) {
+    console.error('Generation error:', err);
+    cookingText.innerHTML = err.message.slice(0, 100);
+    cookingText.style.fontSize = '0.7rem';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SUMMARY VIEW
+// ─────────────────────────────────────────────────────────────
+function showSummaryView() {
+  showDataViz();
+}
+document.getElementById('summaryNextBtn').addEventListener('click', showDataViz);
+
+// ─────────────────────────────────────────────────────────────
+//  DATA VIZ
+// ─────────────────────────────────────────────────────────────
+function showDataViz() {
+  document.getElementById('summaryView').classList.remove('visible');
+  document.getElementById('dataVizView').style.display = 'flex';
+
+  const n = images.length;
+  const MS_PER_SQUARE = 250;
+  const CANVAS_SZ = 1000;
+  const configs = {
+    2: { totalRows: 32, totalCols: 25, rowsPerSection: 8},
+    3: { totalRows: 40, totalCols: 25, rowsPerSection: 8 },
+    4: { totalRows: 48, totalCols: 25, rowsPerSection: 8 },
+  };
+  const cfg = configs[n] || configs[4];
+  const { totalRows, totalCols, rowsPerSection } = cfg;
+  const numSections = n + 2;
+  const cellW = CANVAS_SZ / totalCols;
+  const cellH = CANVAS_SZ / totalRows;
+
+  let wordTimeMs = 0, imageTimeMs = 0;
+  try { const w = sessionStorage.getItem('BRICK_BREAKER_WORD_TIME'); if (w) wordTimeMs = JSON.parse(w); } catch(e) {}
+  try { const im = sessionStorage.getItem('BRICK_BREAKER_IMAGE_TIME'); if (im) imageTimeMs = JSON.parse(im); } catch(e) {}
+
+  // Per-image edit times (shared base + extra manual time per image)
+  let editTimesArr = [];
+  try { const et = sessionStorage.getItem('BRICK_BREAKER_EDIT_TIMES'); if (et) editTimesArr = JSON.parse(et); } catch(e) {}
+
+  const sectionTimes = [
+    wordTimeMs,
+    imageTimeMs,
+    ...Array.from({ length: n }, (_, i) => editTimesArr[i] || 0)
+  ];
+  // totalMs = brickbreaker time (once) + edit times
+  const totalMs = wordTimeMs + sectionTimes.slice(2).reduce((a, b) => a + b, 0);
+  function fmtTime(ms) {
+    if (!ms || ms < 1000) return '0 seconds';
+    if (ms < 60000) return `${Math.round(ms / 1000)} seconds`;
+    return `${(ms / 60000).toFixed(1)} minutes`;
+  }
+
+  const sectionLabels = [ 'Choose Words', 'Choose Images', ...Array.from({ length: n }, (_, i) => `Edit Image ${i + 1}`) ];
+  const maxSquaresPerSection = rowsPerSection * totalCols;
+  const filledPerSection = sectionTimes.map(ms => Math.min(maxSquaresPerSection, Math.floor(ms / MS_PER_SQUARE)));
+  const totalSquares = totalRows * totalCols;
+  const totalFilled = filledPerSection.reduce((a, b) => a + b, 0);
+  const automatedPct = Math.max(0, Math.round(((totalSquares - totalFilled) / totalSquares) * 100));
+
+  document.getElementById('dataVizStat').textContent = `Your final generated image was ${automatedPct}% automated`;
+  document.getElementById('dataVizTime').textContent = `Total time: ${fmtTime(totalMs)}`;
+
+  const tooltip = document.getElementById('squaresTooltip');
+  const sqCanvas = document.getElementById('squaresCanvas');
+  const newSqCanvas = sqCanvas.cloneNode(false);
+  sqCanvas.parentNode.replaceChild(newSqCanvas, sqCanvas);
+  newSqCanvas.width = CANVAS_SZ; newSqCanvas.height = CANVAS_SZ;
+  const sqCtx = newSqCanvas.getContext('2d');
+  sqCtx.fillStyle = '#000';
+  sqCtx.fillRect(0, 0, CANVAS_SZ, CANVAS_SZ);
+
+  const filledCells = new Uint8Array(totalRows * totalCols);
+  for (let s = 0; s < numSections; s++) {
+    const sectionStartRow = s * rowsPerSection;
+    const count = filledPerSection[s];
+    for (let sq = 0; sq < count; sq++) {
+      const col = sq % totalCols;
+      const row = sectionStartRow + Math.floor(sq / totalCols);
+      if (row >= sectionStartRow + rowsPerSection) break;
+      filledCells[row * totalCols + col] = 1;
+      sqCtx.fillStyle = '#f9f9f9';
+      sqCtx.fillRect(col * cellW, row * cellH, cellW, cellH);
+    }
+  }
+  sqCtx.strokeStyle = '#000'; sqCtx.lineWidth = 0.5;
+  for (let c = 0; c <= totalCols; c++) { const x = c * cellW; sqCtx.beginPath(); sqCtx.moveTo(x,0); sqCtx.lineTo(x,CANVAS_SZ); sqCtx.stroke(); }
+  for (let r = 0; r <= totalRows; r++) { const y = r * cellH; sqCtx.beginPath(); sqCtx.moveTo(0,y); sqCtx.lineTo(CANVAS_SZ,y); sqCtx.stroke(); }
+
+  const oldLabels = document.getElementById('dataVizSectionLabels');
+  if (oldLabels) oldLabels.remove();
+  const canvasParent = newSqCanvas.parentElement;
+  canvasParent.style.position = 'relative';
+  const labelCol = document.createElement('div');
+  labelCol.id = 'dataVizSectionLabels';
+  labelCol.style.cssText = 'position:absolute;right:calc(100% + 8px);top:0;height:100%;display:flex;flex-direction:column;justify-content:flex-start;';
+  for (let s = 0; s < numSections; s++) {
+    const frac = rowsPerSection / totalRows;
+    const labelDiv = document.createElement('div');
+    labelDiv.style.cssText = `height:${frac*100}%;display:flex;align-items:center;justify-content:flex-end;font-family:'GT Planar',sans-serif;font-size:0.6rem;text-transform:uppercase;color:rgba(249,249,249,0.4);white-space:nowrap;letter-spacing:0.05em;padding-right:6px;`;
+    labelDiv.textContent = `${sectionLabels[s]} — ${fmtTime(sectionTimes[s])}`;
+    labelCol.appendChild(labelDiv);
+  }
+  canvasParent.appendChild(labelCol);
+
+  newSqCanvas.addEventListener('mousemove', e => {
+    const rect = newSqCanvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (CANVAS_SZ / rect.width);
+    const cy = (e.clientY - rect.top) * (CANVAS_SZ / rect.height);
+    const col = Math.floor(cx / cellW), row = Math.floor(cy / cellH);
+    if (col < 0 || col >= totalCols || row < 0 || row >= totalRows) { tooltip.style.display='none'; return; }
+    const section = Math.floor(row / rowsPerSection);
+    const isFilled = filledCells[row * totalCols + col] === 1;
+    const label = sectionLabels[section] || `Section ${section+1}`;
+    tooltip.textContent = isFilled ? `${label} — ${fmtTime(sectionTimes[section])}` : `${label} — Not reached`;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  });
+  newSqCanvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+  const outCanvas = document.getElementById('dataVizOutputCanvas');
+  outCanvas.width = CANVAS_SZ; outCanvas.height = CANVAS_SZ;
+  const outCtx = outCanvas.getContext('2d');
+  if (_generatedImageData) {
+    outCtx.putImageData(_generatedImageData, 0, 0);
+  } else {
+    const comp = buildCompositeImage();
+    if (comp) outCtx.drawImage(comp, 0, 0);
+  }
+  const outPixels = outCtx.getImageData(0, 0, CANVAS_SZ, CANVAS_SZ);
+  const outD = outPixels.data;
+
+  // For each unfilled cell: compute dominant luminance from generated image, paint black, draw value as white text
+  const cellFontSize = Math.max(5, Math.floor(cellH * 0.45));
+  outCtx.putImageData(outPixels, 0, 0); // draw image first so we can sample it
+
+  for (let row = 0; row < totalRows; row++) {
+    for (let col = 0; col < totalCols; col++) {
+      if (filledCells[row * totalCols + col] === 1) continue;
+      const x0 = Math.floor(col * cellW), x1 = Math.floor((col + 1) * cellW);
+      const y0 = Math.floor(row * cellH), y1 = Math.floor((row + 1) * cellH);
+
+      // Sample dominant luminance from generated image pixels in this cell
+      let rSum = 0, gSum = 0, bSum = 0, cnt = 0;
+      for (let py = y0; py < y1; py++) {
+        for (let px = x0; px < x1; px++) {
+          const p = (py * CANVAS_SZ + px) * 4;
+          rSum += outD[p]; gSum += outD[p+1]; bSum += outD[p+2];
+          cnt++;
+        }
+      }
+      const lum = cnt > 0 ? Math.round((rSum/cnt) * 0.299 + (gSum/cnt) * 0.587 + (bSum/cnt) * 0.114) : 0;
+
+      // Paint cell black
+      outCtx.fillStyle = '#000';
+      outCtx.fillRect(x0, y0, x1 - x0, y1 - y0);
+
+      // Draw luminance value as white text, centered in cell
+      outCtx.fillStyle = '#f9f9f9';
+      outCtx.font = `${cellFontSize}px sans-serif`;
+      outCtx.textAlign = 'center';
+      outCtx.textBaseline = 'middle';
+      outCtx.fillText(String(lum), x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2);
+    }
+  }
+}
+
+document.getElementById('dataVizDownloadBtn').addEventListener('click', () => {
+  const sqCanvas = document.getElementById('squaresCanvas');
+  const a = document.createElement('a');
+  a.href = sqCanvas.toDataURL('image/png');
+  a.download = 'brickbreaker-dataviz.png';
+  a.click();
+});
+
+// HOME BUTTONS
+['dataVizHomeBtn','summaryHomeBtn'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', () => { window.location.href = 'index.html'; });
+});
+
+// ── INIT ─────────────────────────────────────────────────────
+buildFloaters();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
