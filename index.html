@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BRICK BREAKER</title>
+  <title>Conditioned Autonomy</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-weight: 400; }
 
@@ -108,6 +108,33 @@
       text-decoration: none;
     }
     #moreInfoLink:hover { text-decoration: underline; }
+
+    /* More Info modal — matches step 2/3 style */
+    #step1InfoModal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 10000;
+      align-items: center; justify-content: center;
+    }
+    #step1InfoModal.visible { display: flex; }
+    #step1InfoModalBox {
+      background: #f9f9f9; color: #1a1a1a;
+      padding: 2.5rem; max-width: 28rem; width: 90%;
+      font-family: 'GT Planar', sans-serif;
+    }
+    #step1InfoModalText {
+      font-size: 1.3125rem; text-transform: uppercase;
+      line-height: 1.5; color: #1a1a1a;
+    }
+    #step1InfoModalClose {
+      margin-top: 1.5rem;
+      font-size: 1.3125rem; text-transform: uppercase;
+      cursor: pointer; border: 1.6px solid #1a1a1a;
+      padding: 0.5rem 1.25rem; background: none;
+      font-family: 'GT Planar', sans-serif; color: #1a1a1a;
+      transition: background 0.15s, color 0.15s;
+      display: block;
+    }
+    #step1InfoModalClose:hover { background: #1a1a1a; color: #f9f9f9; }
 
     /* ── KEYWORDS AREA — absolutely centered vertically + horizontally in leftCol ── */
     #keywordsBlock {
@@ -372,6 +399,14 @@
 </div>
 <div id="floatTooltip"></div>
 
+<!-- More Info modal (step 1) -->
+<div id="step1InfoModal">
+  <div id="step1InfoModalBox">
+    <p id="step1InfoModalText">Step 1: Type up to 4 keywords. Press Enter to confirm each word. Click a word to re-edit it. Drag images and words in the right panel to rearrange them.</p>
+    <button id="step1InfoModalClose">Close</button>
+  </div>
+</div>
+
 <textarea id="keyword-input" autocomplete="off" spellcheck="false" rows="1"></textarea>
 
 <script>
@@ -423,6 +458,8 @@ const autocorrectWords = [
 ];
 
 let currentSuggestion = '';
+// Tracks words accepted from the suggestions list (tab or typed match)
+const suggestionAccepted = new Set();
 function pickRandom(exclude = []) {
   const used = new Set([...state.keywords.map(k=>k.toLowerCase()), ...exclude.map(w=>w.toLowerCase())]);
   const pool = autocorrectWords.filter(w => !used.has(w.toLowerCase()));
@@ -455,13 +492,12 @@ function extractKeywords(phrase) {
     .map(w => w.replace(/^[-']+|[-']+$/g, ''))
     .filter(w => w.length > 1 && !STOPWORDS.has(w));
 
-  // Deduplicate preserving order
+  // Deduplicate preserving order — stable order prevents idx mismatches on re-edit
   const seen = new Set();
   const unique = words.filter(w => { if (seen.has(w)) return false; seen.add(w); return true; });
 
-  // Shuffle and take up to 4
-  const shuffled = unique.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 4);
+  // Take up to 4 in stable (phrase) order — no shuffle
+  return unique.slice(0, 4);
 }
 
 // ── Progress ──────────────────────────────────────────────────
@@ -608,6 +644,8 @@ async function commitWord(word, isSuggestion = false) {
   state.keywords.push(word.toLowerCase());
   // If the typed word matches the current suggestion, treat it as suggestion-sourced
   const effectiveSource = isSuggestion || word.toLowerCase() === currentSuggestion.toLowerCase()
+    || suggestionAccepted.has(word.toLowerCase())
+    || autocorrectWords.includes(word.toLowerCase())
     ? 'suggestion' : 'manual';
   state.wordSources.push(effectiveSource);
   state.images.push(null);
@@ -794,6 +832,10 @@ function spawnWordLabel(idx, word, source) {
 function shuffleImg(idx) {
   const pool = state.pools[idx];
   if (!pool || !pool.length) return;
+  // Shuffle click — pause word timer, start image timer
+  pauseWordTimer();
+  resumeImageTimer();
+  resetIdleTimer();
   lastShuffleTime = Date.now();
   shuffleIdx[idx] = ((shuffleIdx[idx] ?? 0) + 1) % pool.length;
   const src = pool[shuffleIdx[idx]];
@@ -1027,7 +1069,49 @@ function tick() {
 // ══════════════════════════════════════════════════════════════
 //  INPUT EVENTS
 // ══════════════════════════════════════════════════════════════
-let wordTimerStart=null, wordTimeMs=0, imageTimerStart=Date.now(), lastShuffleTime=null;
+
+// ── Timers: accumulate elapsed ms separately for typing vs shuffling ──
+// Word timer: runs while user is actively typing
+let wordTypingStart = null;   // timestamp when current typing session began
+let wordAccumMs     = 0;      // total ms accumulated across all typing sessions
+
+// Image timer: runs while user is actively shuffling
+let imageShuffleStart = null; // timestamp when current shuffle session began
+let imageAccumMs      = 0;    // total ms accumulated across all shuffle sessions
+
+// Pause word timer (called when typing stops / shuffle starts)
+function pauseWordTimer() {
+  if (wordTypingStart !== null) {
+    wordAccumMs += Date.now() - wordTypingStart;
+    wordTypingStart = null;
+  }
+}
+// Resume word timer (called on keydown in kwInput)
+function resumeWordTimer() {
+  if (wordTypingStart === null) wordTypingStart = Date.now();
+}
+
+// Pause image timer (called when shuffle session ends / typing resumes)
+function pauseImageTimer() {
+  if (imageShuffleStart !== null) {
+    imageAccumMs += Date.now() - imageShuffleStart;
+    imageShuffleStart = null;
+  }
+}
+// Resume image timer (called on shuffle click)
+function resumeImageTimer() {
+  if (imageShuffleStart === null) imageShuffleStart = Date.now();
+}
+
+// Idle timeout — stop both timers if user does nothing for 5s
+let _idleTimeout = null;
+function resetIdleTimer() {
+  clearTimeout(_idleTimeout);
+  _idleTimeout = setTimeout(() => {
+    pauseWordTimer();
+    pauseImageTimer();
+  }, 5000);
+}
 
 // ── Dictionary check via Datamuse API ─────────────────────────
 async function isRealWord(word) {
@@ -1059,7 +1143,10 @@ kwSuggestion.addEventListener('mousedown', e => {
 });
 
 kwInput.addEventListener('keydown', e => {
-  if (!wordTimerStart) wordTimerStart = Date.now();
+  // Typing starts/resumes — start word timer, pause image timer
+  resumeWordTimer();
+  pauseImageTimer();
+  resetIdleTimer();
   // Prevent newline
   if (e.key === 'Enter') { e.preventDefault(); return; }
   // No leading spaces
@@ -1068,7 +1155,10 @@ kwInput.addEventListener('keydown', e => {
   if (e.key === 'Tab' && currentSuggestion) {
     e.preventDefault();
     const val = (kwInput.textContent || '').trimEnd();
-    kwInput.textContent = val + (val.length > 0 ? ' ' : '') + currentSuggestion + ' ';
+    const inserted = currentSuggestion;
+    kwInput.textContent = val + (val.length > 0 ? ' ' : '') + inserted + ' ';
+    // Mark this word as suggestion-sourced so it gets white bg, not pink
+    suggestionAccepted.add(inserted.toLowerCase());
     caretToEnd();
     currentSuggestion = pickRandom();
     kwSuggestion.textContent = currentSuggestion;
@@ -1132,7 +1222,10 @@ function syncKeywordsFromPhrase(phrase) {
     if (state.keywords.length >= 4) break;
     const idx = state.keywords.length; // capture index now — stable for this iteration
     state.keywords.push(kw);
-    state.wordSources.push(kw.toLowerCase() === currentSuggestion.toLowerCase() ? 'suggestion' : 'manual');
+    state.wordSources.push(kw.toLowerCase() === currentSuggestion.toLowerCase()
+      || suggestionAccepted.has(kw.toLowerCase())
+      || autocorrectWords.includes(kw.toLowerCase())
+      ? 'suggestion' : 'manual');
     state.images.push(null);
     state.pools.push([]);
     shuffleIdx[idx] = 0;
@@ -1141,11 +1234,14 @@ function syncKeywordsFromPhrase(phrase) {
     (function(capturedIdx, capturedKw) {
       fetchOneImage(capturedKw).then(src => {
         if (!src) return;
+        // Guard: verify the keyword at capturedIdx hasn't shifted or been removed
+        if (state.keywords[capturedIdx] !== capturedKw) return;
         state.images[capturedIdx] = src;
         state.pools[capturedIdx] = [src];
         attachImage(capturedIdx, src);
         buildPool(capturedKw).then(pool => {
           if (pool.length) {
+            if (state.keywords[capturedIdx] !== capturedKw) return;
             state.pools[capturedIdx] = pool;
             if (!state.images[capturedIdx]) attachImage(capturedIdx, pool[0]);
           }
@@ -1207,7 +1303,13 @@ document.addEventListener('click', e => {
 
 moreInfoLink.addEventListener('click', e => {
   e.stopPropagation();
-  alert('Step 1: Type up to 4 keywords. Press Enter to confirm each word. Click a word to re-edit it. Drag images and words in the right panel to rearrange them.');
+  document.getElementById('step1InfoModal').classList.add('visible');
+});
+document.getElementById('step1InfoModalClose').addEventListener('click', () => {
+  document.getElementById('step1InfoModal').classList.remove('visible');
+});
+document.getElementById('step1InfoModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('visible');
 });
 
 // ── Next Step ──────────────────────────────────────────────────
@@ -1220,11 +1322,12 @@ nextStepBtn.addEventListener('click', e => {
     sessionStorage.setItem('BRICK_BREAKER_IMAGES',        JSON.stringify(urls));
     sessionStorage.setItem('BRICK_BREAKER_SHUFFLE_COUNTS',JSON.stringify(urls.map((_,i)=>shuffleCounts[i]??0)));
     sessionStorage.setItem('BRICK_BREAKER_PROGRESS',      JSON.stringify({step:1,pct:33}));
-    if (wordTimerStart) wordTimeMs = Date.now()-wordTimerStart;
-    const landingTimeMs = Date.now() - pageLoadStart;
-    sessionStorage.setItem('BRICK_BREAKER_WORD_TIME',    JSON.stringify(landingTimeMs));
-    sessionStorage.setItem('BRICK_BREAKER_IMAGE_TIME',   JSON.stringify(landingTimeMs));
-    sessionStorage.setItem('BRICK_BREAKER_LANDING_TIME', JSON.stringify(landingTimeMs));
+    // Flush any in-progress timer sessions
+    pauseWordTimer();
+    pauseImageTimer();
+    sessionStorage.setItem('BRICK_BREAKER_WORD_TIME',    JSON.stringify(wordAccumMs));
+    sessionStorage.setItem('BRICK_BREAKER_IMAGE_TIME',   JSON.stringify(imageAccumMs));
+    sessionStorage.setItem('BRICK_BREAKER_LANDING_TIME', JSON.stringify(Date.now() - pageLoadStart));
   } catch(_) {}
   window.location.href = 'processing.html';
 });

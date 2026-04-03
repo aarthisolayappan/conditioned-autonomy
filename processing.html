@@ -12,6 +12,11 @@
       src: url('GT-Planar-Regular-Trial.otf') format('opentype');
     }
 
+    @font-face {
+      font-family: 'FT Polar';
+      src: url('FTPolarSemiMonoTrial-Book.otf') format('opentype');
+    }
+
     body {
       font-family: 'GT Planar', sans-serif;
       background: #000;
@@ -448,6 +453,182 @@
     #loadingDots span:nth-child(1) { animation-delay: 0s; }
     #loadingDots span:nth-child(2) { animation-delay: 0.4s; }
     #loadingDots span:nth-child(3) { animation-delay: 0.8s; }
+
+    /* ══════════════════════════════════════════
+       DATA VIZ — SPLIT LAYOUT (step 5)
+    ══════════════════════════════════════════ */
+    #dataVizView {
+      position: fixed; inset: 0; display: none; z-index: 3000;
+      flex-direction: row !important;
+      align-items: stretch !important;
+      justify-content: flex-start !important;
+      background: #000;
+    }
+
+    /* LEFT COL — black bg, white text, same proportions as #leftCol */
+    #dvLeftCol {
+      width: 47.5rem; min-width: 47.5rem; height: 100vh;
+      background: #000;
+      display: flex; flex-direction: column;
+      align-items: flex-start;
+      position: relative; flex-shrink: 0;
+      padding: 7px 0 0 0; /* account for progress bar height */
+    }
+    #dvTopContent {
+      position: absolute; top: 7px; left: 0; right: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 1.875rem;
+    }
+    #dvStepCircle {
+      width: 3.5rem; height: 3.5rem; border-radius: 50%;
+      border: 1.6px solid #f9f9f9;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5625rem; color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif;
+    }
+    #dvStatLine {
+      font-size: 1.3125rem; color: #f9f9f9;
+      text-transform: uppercase; line-height: 1.25;
+      text-align: center; margin-top: 0.6rem;
+      letter-spacing: 0;
+    }
+    #dvStatLine span { text-decoration: none; }
+    #dvTimeLine {
+      font-size: 1.3125rem; color: #f9f9f9;
+      text-transform: uppercase; line-height: 1.25;
+      text-align: center; margin-top: 0;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+    #dvMoreInfoLink {
+      font-size: 1.3125rem; text-transform: uppercase;
+      color: rgba(249,249,249,0.4); cursor: pointer;
+      background: none; border: none;
+      font-family: 'GT Planar', sans-serif;
+      text-align: center; padding: 0; margin-top: 0;
+      display: block; text-decoration: none; letter-spacing: 0;
+    }
+    #dvMoreInfoLink:hover { text-decoration: underline; }
+
+    /* Center hint text */
+    #dvHint {
+      position: absolute; top: 50%; left: 0; right: 0;
+      transform: translateY(-50%);
+      font-size: 1.3125rem;
+      color: rgba(249,249,249,0.28);
+      text-align: center;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    /* Bottom buttons */
+    #dvBottomBtns {
+      position: absolute; bottom: 1.3125rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: row; align-items: center; gap: 0.75rem;
+    }
+    .dv-btn {
+      width: 10.625rem; height: 3.8125rem;
+      border: 1.6px solid #f9f9f9; background: #000; color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif; font-size: 1.3125rem;
+      text-transform: uppercase; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .dv-btn:hover { background: #f9f9f9; color: #000; }
+
+    /* RIGHT COL — full bleed output canvas */
+    #dvRightCol {
+      flex: 1; height: 100vh;
+      background: #000;
+      position: relative; overflow: hidden;
+      cursor: crosshair;
+    }
+    #dvOutputCanvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+      object-fit: cover; /* handled via CSS transform trick on canvas below */
+    }
+    /* Canvas stretch overlay — covers full right col */
+    #dvCanvasWrap {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+    #dvCanvasWrap canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      display: block;
+    }
+    /* Pink highlight overlay canvas */
+    #dvHighlightCanvas { pointer-events: none; z-index: 2; }
+    /* Output canvas sits below highlight */
+    #dvOutputCanvas { z-index: 1; }
+
+    /* Tooltip for data viz hover */
+    #dvTooltip {
+      position: fixed;
+      background: rgba(0,0,0,0.88);
+      color: #f9f9f9;
+      font-family: 'GT Planar', sans-serif;
+      font-size: 0.7rem; text-transform: uppercase;
+      padding: 5px 9px; pointer-events: none;
+      display: none; white-space: nowrap;
+      letter-spacing: 0.04em; z-index: 9999;
+      border: 1px solid rgba(249,249,249,0.3);
+    }
+
+    /* More Info modal for step 5 */
+    #dvInfoModal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 10000;
+      align-items: center; justify-content: center;
+    }
+    #dvInfoModal.visible { display: flex; }
+    #dvInfoModalBox {
+      background: #f9f9f9; color: #1a1a1a;
+      padding: 2.5rem; max-width: 28rem; width: 90%;
+      font-family: 'GT Planar', sans-serif;
+    }
+    #dvInfoModalBox p {
+      font-size: 1.3125rem; text-transform: uppercase;
+      line-height: 1.5; color: #1a1a1a;
+    }
+    #dvInfoModalClose {
+      margin-top: 1.5rem;
+      font-size: 1.3125rem; text-transform: uppercase;
+      cursor: pointer; border: 1.6px solid #1a1a1a;
+      padding: 0.5rem 1.25rem; background: none;
+      font-family: 'GT Planar', sans-serif; color: #1a1a1a;
+      transition: background 0.15s, color 0.15s;
+    }
+    #dvInfoModalClose:hover { background: #1a1a1a; color: #f9f9f9; }
+
+    /* Shared More Info modal (steps 2 + 3) */
+    #sharedInfoModal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 10000;
+      align-items: center; justify-content: center;
+    }
+    #sharedInfoModal.visible { display: flex; }
+    #sharedInfoModalBox {
+      background: #f9f9f9; color: #1a1a1a;
+      padding: 2.5rem; max-width: 28rem; width: 90%;
+      font-family: 'GT Planar', sans-serif;
+    }
+    #sharedInfoModalText {
+      font-size: 1.3125rem; text-transform: uppercase;
+      line-height: 1.5; color: #1a1a1a;
+    }
+    #sharedInfoModalClose {
+      margin-top: 1.5rem;
+      font-size: 1.3125rem; text-transform: uppercase;
+      cursor: pointer; border: 1.6px solid #1a1a1a;
+      padding: 0.5rem 1.25rem; background: none;
+      font-family: 'GT Planar', sans-serif; color: #1a1a1a;
+      transition: background 0.15s, color 0.15s;
+    }
+    #sharedInfoModalClose:hover { background: #1a1a1a; color: #f9f9f9; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
@@ -561,11 +742,9 @@
       <div style="font-size:1.3125rem;color:#1a1a1a;text-transform:uppercase;line-height:1.25;text-align:center;margin-top:0.6rem;">Generate your image</div>
       <button id="compMoreInfoLink" style="font-size:1.3125rem;text-transform:uppercase;color:rgba(26,26,26,0.4);cursor:pointer;background:none;border:none;font-family:'GT Planar',sans-serif;text-align:center;padding:0;margin-top:0;display:block;text-decoration:none;letter-spacing:0;">More Info</button>
     </div>
-    <div id="compGhostText">Click the dot to see<br>the combined image<br>that used your<br>edited images</div>
-    <div id="cookingText">Cooking<span id="cookingDots"><span>.</span><span>.</span><span>.</span></span></div>
+    <div id="compGhostText">This is the combined<br>image from the edited<br>input images</div>    <div id="cookingText">Cooking<span id="cookingDots"><span>.</span><span>.</span><span>.</span></span></div>
     <button id="generateBtn">Generate</button>
     <div id="compCenterBtns">
-      <button id="downloadBtn" class="comp-action-btn">Download</button>
       <button id="processBtn" class="comp-action-btn">Process</button>
     </div>
     <button id="viewStatsBtn" class="comp-action-btn">View Stats</button>
@@ -578,29 +757,61 @@
 </div>
 <div id="cookingTooltip"></div>
 
-<!-- ══ DATA VIZ VIEW ══ -->
-<div id="dataVizView" style="position:fixed;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:3000;">
-  <button class="comp-home-link" id="dataVizHomeBtn" style="color:#f9f9f9;">Home</button>
-  <div id="dataVizStat" style="position:absolute;top:1.375rem;width:100%;text-align:center;color:#f9f9f9;font-size:14px;font-family:'GT Planar',sans-serif;font-weight:400;text-transform:uppercase;"></div>
-  <div id="dataVizTime" style="position:absolute;top:calc(1.375rem + 1.6em);width:100%;text-align:center;color:rgba(249,249,249,0.5);font-size:14px;font-family:'GT Planar',sans-serif;font-weight:400;text-transform:uppercase;"></div>
-  <div id="dataVizLabelsRow" style="display:flex;gap:0;margin-bottom:6px;">
-    <div style="font-family:'GT Planar',sans-serif;font-size:0.72rem;text-transform:uppercase;color:rgba(249,249,249,0.38);text-decoration:underline;text-align:center;width:min(40vh,480px);">User</div>
-    <div style="font-family:'GT Planar',sans-serif;font-size:0.72rem;text-transform:uppercase;color:rgba(249,249,249,0.38);text-decoration:underline;text-align:center;width:min(40vh,480px);">Output</div>
+<!-- ══ DATA VIZ VIEW (step 5) ══ -->
+<div id="dataVizView">
+
+  <!-- LEFT COL -->
+  <div id="dvLeftCol">
+    <!-- Top: step + stats + more info -->
+    <div id="dvTopContent">
+      <div id="dvStepCircle">5</div>
+      <div id="dvStatLine">Image: <span id="dvPct">—%</span> automated.</div>
+      <div id="dvTimeLine">Time spent to generate it:<br>Only <span id="dvTotalTime">—</span></div>
+      <button id="dvMoreInfoLink">More Info</button>
+    </div>
+
+    <!-- Center: hover hint -->
+    <div id="dvHint">Hover over your<br>image to know more</div>
+
+    <!-- Bottom: download + restart -->
+    <div id="dvBottomBtns">
+      <button class="dv-btn" id="dvDownloadBtn">Download</button>
+      <button class="dv-btn" id="dvRestartBtn">Restart</button>
+    </div>
   </div>
-  <div style="display:flex;gap:2vw;align-items:center;padding-top:1vh;">
-    <canvas id="squaresCanvas" width="1000" height="1000" style="display:block;width:min(40vh,480px);height:min(40vh,480px);background:#000;cursor:crosshair;outline:2px solid #f9f9f9;"></canvas>
-    <canvas id="dataVizOutputCanvas" width="1000" height="1000" style="display:block;width:min(40vh,480px);height:min(40vh,480px);background:#111;outline:2px solid #f9f9f9;"></canvas>
+
+  <!-- RIGHT COL -->
+  <div id="dvRightCol">
+    <div id="dvCanvasWrap">
+      <canvas id="dataVizOutputCanvas" width="1000" height="1000"></canvas>
+      <canvas id="dvHighlightCanvas"></canvas>
+    </div>
   </div>
-  <div style="margin-top:4vh;">
-    <button id="dataVizDownloadBtn" style="width:4rem;height:4rem;border:2px solid #f9f9f9;border-radius:50%;background:#000;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.12s;">
-      <svg viewBox="0 0 24 24" fill="none" style="width:1.25rem;height:1.25rem;">
-        <path d="M12 3v12M8 11l4 4 4-4" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#f9f9f9" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>
-    </button>
+
+</div>
+
+<!-- Tooltip -->
+<div id="dvTooltip"></div>
+
+<!-- More Info modal -->
+<div id="dvInfoModal">
+  <div id="dvInfoModalBox">
+    <p>Step 5: This view shows how much time you spent on each section that generated this image. The cells with binary code represent automated decisions — the image areas beneath show where your choices shaped the final result.</p>
+    <button id="dvInfoModalClose">Close</button>
   </div>
 </div>
-<div id="squaresTooltip" style="position:fixed;background:rgba(0,0,0,0.88);color:#f9f9f9;font-family:'GT Planar',sans-serif;font-size:0.7rem;text-transform:uppercase;padding:5px 9px;pointer-events:none;display:none;white-space:nowrap;letter-spacing:0.04em;z-index:9999;"></div>
+
+<!-- kept for legacy download logic — hidden -->
+<canvas id="squaresCanvas" width="1000" height="1000" style="display:none;"></canvas>
+<div id="squaresTooltip" style="display:none;"></div>
+
+<!-- Shared More Info modal (steps 2 + 3) -->
+<div id="sharedInfoModal">
+  <div id="sharedInfoModalBox">
+    <p id="sharedInfoModalText"></p>
+    <button id="sharedInfoModalClose">Close</button>
+  </div>
+</div>
 
 <!-- ══ SUMMARY VIEW ══ -->
 <div id="summaryView">
@@ -1450,7 +1661,8 @@ function automateEdit(idx){
 //  MISC
 // ══════════════════════════════════════════════════════════════
 moreInfoLink.addEventListener('click',()=>{
-  alert('Step 2: Hover each image and choose how to edit it. Manually select filters and adjust sliders, then click Next Image. Or click Automate Edit for automatic processing.');
+  document.getElementById('sharedInfoModalText').textContent = 'Step 2: Hover each image and choose how to edit it. Manually select filters and adjust sliders, then click Next Image.';
+  document.getElementById('sharedInfoModal').classList.add('visible');
 });
 
 nextStepBtn.addEventListener('click',()=>{
@@ -1594,10 +1806,13 @@ function finishCompositeTransition(carrierFloater) {
       ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
       ctx.drawImage(compCanvas, 0, 0);
       compOutputCanvas.style.width = '100%'; compOutputCanvas.style.height = '100%';
+      // Auto-show composite image — remove dot, reveal canvas immediately
+      compDotLayer.innerHTML = '';
+      compOutputCanvas.style.display = 'block';
       _generatedImageData = null;
       startImageGeneration(compCanvas);
     }
-  }, 400);
+  }, 0);
 
   generateBtn.classList.add('visible');
   _merging = false;
@@ -1679,7 +1894,6 @@ generateBtn.addEventListener('click', () => {
         denoiseCanvas.style.display = 'none';
         cookingText.classList.remove('visible');
         compCenterBtns.classList.add('visible');
-        downloadBtn.classList.add('visible');
         processBtn.classList.add('visible');
         viewStatsBtn.classList.add('visible');
         progressFill.style.width = '100%';
@@ -1695,80 +1909,6 @@ generateBtn.addEventListener('click', () => {
       if (_generatedImageData) { clearInterval(poll); startDenoise(_generatedImageData); }
     }, 500);
   }
-});
-
-// ── DOWNLOAD ──────────────────────────────────────────────────
-downloadBtn.addEventListener('click', async () => {
-  if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
-  downloadBtn.textContent = 'Zipping...';
-  downloadBtn.disabled = true;
-
-  const zip = new JSZip();
-  const kws = keywords.length ? keywords : images.map((_,i)=>`image${i+1}`);
-
-  // Helper: canvas → blob → zip
-  async function addCanvas(canvas, filename) {
-    if (!canvas) return;
-    return new Promise(resolve => {
-      canvas.toBlob(blob => { if (blob) zip.file(filename, blob); resolve(); }, 'image/png');
-    });
-  }
-
-  // Helper: fetch URL → blob → zip (for original images at original dimensions)
-  async function addUrl(url, filename) {
-    try {
-      const resp = await fetch(url);
-      const blob = await resp.blob();
-      zip.file(filename, blob);
-    } catch(e) {
-      // If CORS fails, skip
-      console.warn('Could not fetch', url);
-    }
-  }
-
-  const promises = [];
-
-  for (let i = 0; i < images.length; i++) {
-    const kw = (kws[i] || `image${i+1}`).toLowerCase().replace(/[^a-z0-9]/g,'-');
-    const s = imgStateArr[i];
-
-    // 1. Original image (original dimensions) — named after URL
-const urlFilename = images[i].split('/').pop().split('?')[0] || `${kw}-01-original.png`;
-promises.push(addUrl(images[i], `01-original-${urlFilename}`));
-
-    if (s) {
-      // 2. After features selected
-      promises.push(addCanvas(s.snapFeatures, `${kw}-02-chosen-features.png`));
-      // 3. Erase pixels with blue crosses
-      promises.push(addCanvas(s.snapSliders,  `${kw}-03-erase-crosses.png`));
-      // 4. Final edited image (clean, no crosses)
-      promises.push(addCanvas(s.snapFinal,    `${kw}-04-final-edit.png`));
-    }
-  }
-
-  // 5. Composite (averaged feature maps before generation)
-  const compCanvas = buildCompositeImage();
-  if (compCanvas) promises.push(addCanvas(compCanvas, 'composite-05.png'));
-
-  // 6. Final generated image
-  if (_generatedImageData) {
-    const genCanvas = document.createElement('canvas');
-    genCanvas.width = CANVAS_SIZE; genCanvas.height = CANVAS_SIZE;
-    genCanvas.getContext('2d').putImageData(_generatedImageData, 0, 0);
-    promises.push(addCanvas(genCanvas, 'generated-06-final.png'));
-  }
-
-  await Promise.all(promises);
-
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'brickbreaker-images.zip';
-  a.click();
-  URL.revokeObjectURL(a.href);
-
-  downloadBtn.textContent = 'Download';
-  downloadBtn.disabled = false;
 });
 
 // ── PROCESS / OUTPUT ──────────────────────────────────────────
@@ -1843,7 +1983,8 @@ function stopProcessAnimation() {
 viewStatsBtn.addEventListener('click', () => { showDataViz(); });
 
 document.getElementById('compMoreInfoLink').addEventListener('click', () => {
-  alert('Step 3: Your edited images are composited together and sent to an AI model to generate a final image.');
+  document.getElementById('sharedInfoModalText').textContent = 'Step 3: Your edited images are composited together and sent to an AI model to generate a final image.';
+  document.getElementById('sharedInfoModal').classList.add('visible');
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -1908,7 +2049,7 @@ function showSummaryView() {
 document.getElementById('summaryNextBtn').addEventListener('click', showDataViz);
 
 // ─────────────────────────────────────────────────────────────
-//  DATA VIZ
+//  DATA VIZ (step 5) — split layout
 // ─────────────────────────────────────────────────────────────
 function showDataViz() {
   document.getElementById('summaryView').classList.remove('visible');
@@ -1918,7 +2059,7 @@ function showDataViz() {
   const MS_PER_SQUARE = 250;
   const CANVAS_SZ = 1000;
   const configs = {
-    2: { totalRows: 32, totalCols: 25, rowsPerSection: 8},
+    2: { totalRows: 32, totalCols: 25, rowsPerSection: 8 },
     3: { totalRows: 40, totalCols: 25, rowsPerSection: 8 },
     4: { totalRows: 48, totalCols: 25, rowsPerSection: 8 },
   };
@@ -1928,11 +2069,10 @@ function showDataViz() {
   const cellW = CANVAS_SZ / totalCols;
   const cellH = CANVAS_SZ / totalRows;
 
+  // ── Timings ──────────────────────────────────────────────────
   let wordTimeMs = 0, imageTimeMs = 0;
   try { const w = sessionStorage.getItem('BRICK_BREAKER_WORD_TIME'); if (w) wordTimeMs = JSON.parse(w); } catch(e) {}
   try { const im = sessionStorage.getItem('BRICK_BREAKER_IMAGE_TIME'); if (im) imageTimeMs = JSON.parse(im); } catch(e) {}
-
-  // Per-image edit times (shared base + extra manual time per image)
   let editTimesArr = [];
   try { const et = sessionStorage.getItem('BRICK_BREAKER_EDIT_TIMES'); if (et) editTimesArr = JSON.parse(et); } catch(e) {}
 
@@ -1941,33 +2081,31 @@ function showDataViz() {
     imageTimeMs,
     ...Array.from({ length: n }, (_, i) => editTimesArr[i] || 0)
   ];
-  // totalMs = brickbreaker time (once) + edit times
   const totalMs = wordTimeMs + sectionTimes.slice(2).reduce((a, b) => a + b, 0);
+
   function fmtTime(ms) {
     if (!ms || ms < 1000) return '0 seconds';
     if (ms < 60000) return `${Math.round(ms / 1000)} seconds`;
     return `${(ms / 60000).toFixed(1)} minutes`;
   }
 
-  const sectionLabels = [ 'Choose Words', 'Choose Images', ...Array.from({ length: n }, (_, i) => `Edit Image ${i + 1}`) ];
+  const sectionLabels = [
+    'Choose Words',
+    'Choose Images',
+    ...Array.from({ length: n }, (_, i) => `Edit Image ${i + 1}`)
+  ];
+
   const maxSquaresPerSection = rowsPerSection * totalCols;
   const filledPerSection = sectionTimes.map(ms => Math.min(maxSquaresPerSection, Math.floor(ms / MS_PER_SQUARE)));
   const totalSquares = totalRows * totalCols;
   const totalFilled = filledPerSection.reduce((a, b) => a + b, 0);
   const automatedPct = Math.max(0, Math.round(((totalSquares - totalFilled) / totalSquares) * 100));
 
-  document.getElementById('dataVizStat').textContent = `Your final generated image was ${automatedPct}% automated`;
-  document.getElementById('dataVizTime').textContent = `Total time: ${fmtTime(totalMs)}`;
+  // ── Left col stats ───────────────────────────────────────────
+  document.getElementById('dvPct').textContent = automatedPct + '%';
+  document.getElementById('dvTotalTime').textContent = fmtTime(totalMs);
 
-  const tooltip = document.getElementById('squaresTooltip');
-  const sqCanvas = document.getElementById('squaresCanvas');
-  const newSqCanvas = sqCanvas.cloneNode(false);
-  sqCanvas.parentNode.replaceChild(newSqCanvas, sqCanvas);
-  newSqCanvas.width = CANVAS_SZ; newSqCanvas.height = CANVAS_SZ;
-  const sqCtx = newSqCanvas.getContext('2d');
-  sqCtx.fillStyle = '#000';
-  sqCtx.fillRect(0, 0, CANVAS_SZ, CANVAS_SZ);
-
+  // ── Build filledCells map ────────────────────────────────────
   const filledCells = new Uint8Array(totalRows * totalCols);
   for (let s = 0; s < numSections; s++) {
     const sectionStartRow = s * rowsPerSection;
@@ -1977,107 +2115,305 @@ function showDataViz() {
       const row = sectionStartRow + Math.floor(sq / totalCols);
       if (row >= sectionStartRow + rowsPerSection) break;
       filledCells[row * totalCols + col] = 1;
-      sqCtx.fillStyle = '#f9f9f9';
-      sqCtx.fillRect(col * cellW, row * cellH, cellW, cellH);
     }
   }
-  sqCtx.strokeStyle = '#000'; sqCtx.lineWidth = 0.5;
-  for (let c = 0; c <= totalCols; c++) { const x = c * cellW; sqCtx.beginPath(); sqCtx.moveTo(x,0); sqCtx.lineTo(x,CANVAS_SZ); sqCtx.stroke(); }
-  for (let r = 0; r <= totalRows; r++) { const y = r * cellH; sqCtx.beginPath(); sqCtx.moveTo(0,y); sqCtx.lineTo(CANVAS_SZ,y); sqCtx.stroke(); }
 
-  const oldLabels = document.getElementById('dataVizSectionLabels');
-  if (oldLabels) oldLabels.remove();
-  const canvasParent = newSqCanvas.parentElement;
-  canvasParent.style.position = 'relative';
-  const labelCol = document.createElement('div');
-  labelCol.id = 'dataVizSectionLabels';
-  labelCol.style.cssText = 'position:absolute;right:calc(100% + 8px);top:0;height:100%;display:flex;flex-direction:column;justify-content:flex-start;';
-  for (let s = 0; s < numSections; s++) {
-    const frac = rowsPerSection / totalRows;
-    const labelDiv = document.createElement('div');
-    labelDiv.style.cssText = `height:${frac*100}%;display:flex;align-items:center;justify-content:flex-end;font-family:'GT Planar',sans-serif;font-size:0.6rem;text-transform:uppercase;color:rgba(249,249,249,0.4);white-space:nowrap;letter-spacing:0.05em;padding-right:6px;`;
-    labelDiv.textContent = `${sectionLabels[s]} — ${fmtTime(sectionTimes[s])}`;
-    labelCol.appendChild(labelDiv);
+
+  // ── Draw output canvas (image + binary cells) ────────────────
+  function randByte() {
+    let s = '';
+    for (let i = 0; i < 8; i++) s += Math.random() < 0.5 ? '0' : '1';
+    return s;
   }
-  canvasParent.appendChild(labelCol);
-
-  newSqCanvas.addEventListener('mousemove', e => {
-    const rect = newSqCanvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left) * (CANVAS_SZ / rect.width);
-    const cy = (e.clientY - rect.top) * (CANVAS_SZ / rect.height);
-    const col = Math.floor(cx / cellW), row = Math.floor(cy / cellH);
-    if (col < 0 || col >= totalCols || row < 0 || row >= totalRows) { tooltip.style.display='none'; return; }
-    const section = Math.floor(row / rowsPerSection);
-    const isFilled = filledCells[row * totalCols + col] === 1;
-    const label = sectionLabels[section] || `Section ${section+1}`;
-    tooltip.textContent = isFilled ? `${label} — ${fmtTime(sectionTimes[section])}` : `${label} — Not reached`;
-    tooltip.style.display = 'block';
-    tooltip.style.left = (e.clientX + 14) + 'px';
-    tooltip.style.top = (e.clientY - 10) + 'px';
-  });
-  newSqCanvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
   const outCanvas = document.getElementById('dataVizOutputCanvas');
   outCanvas.width = CANVAS_SZ; outCanvas.height = CANVAS_SZ;
   const outCtx = outCanvas.getContext('2d');
+
   if (_generatedImageData) {
     outCtx.putImageData(_generatedImageData, 0, 0);
   } else {
     const comp = buildCompositeImage();
     if (comp) outCtx.drawImage(comp, 0, 0);
   }
-  const outPixels = outCtx.getImageData(0, 0, CANVAS_SZ, CANVAS_SZ);
-  const outD = outPixels.data;
 
-  // For each unfilled cell: compute dominant luminance from generated image, paint black, draw value as white text
-  const cellFontSize = Math.max(5, Math.floor(cellH * 0.45));
-  outCtx.putImageData(outPixels, 0, 0); // draw image first so we can sample it
+  // Binary cells — 4 digits top row + 4 digits bottom row per cell
+  const cw = Math.floor(cellW), ch = Math.floor(cellH);
+
+  function drawBinaryCells() {
+  let fs = Math.max(5, Math.floor(ch * 0.44));
+  outCtx.font = `${fs}px 'FT Polar', monospace`;
+  const measured = outCtx.measureText('0000').width;
+  if (measured > 0) {
+    fs = Math.floor(fs * (cw * 0.95) / measured);
+    fs = Math.max(5, Math.min(fs, Math.floor(ch * 0.46)));
+  }
+  outCtx.font = `${fs}px 'FT Polar', monospace`;
+  outCtx.textAlign = 'center';
+  outCtx.textBaseline = 'middle';
+
+  function drawSpaced(str, x0, y, totalW) {
+    const slot = totalW / str.length;
+    for (let i = 0; i < str.length; i++) {
+      outCtx.fillText(str[i], x0 + slot * i + slot / 2, y);
+    }
+  }
 
   for (let row = 0; row < totalRows; row++) {
     for (let col = 0; col < totalCols; col++) {
       if (filledCells[row * totalCols + col] === 1) continue;
-      const x0 = Math.floor(col * cellW), x1 = Math.floor((col + 1) * cellW);
-      const y0 = Math.floor(row * cellH), y1 = Math.floor((row + 1) * cellH);
-
-      // Sample dominant luminance from generated image pixels in this cell
-      let rSum = 0, gSum = 0, bSum = 0, cnt = 0;
-      for (let py = y0; py < y1; py++) {
-        for (let px = x0; px < x1; px++) {
-          const p = (py * CANVAS_SZ + px) * 4;
-          rSum += outD[p]; gSum += outD[p+1]; bSum += outD[p+2];
-          cnt++;
-        }
-      }
-      const lum = cnt > 0 ? Math.round((rSum/cnt) * 0.299 + (gSum/cnt) * 0.587 + (bSum/cnt) * 0.114) : 0;
-
-      // Paint cell black
-      outCtx.fillStyle = '#000';
-      outCtx.fillRect(x0, y0, x1 - x0, y1 - y0);
-
-      // Draw luminance value as white text, centered in cell
-      outCtx.fillStyle = '#f9f9f9';
-      outCtx.font = `${cellFontSize}px sans-serif`;
-      outCtx.textAlign = 'center';
-      outCtx.textBaseline = 'middle';
-      outCtx.fillText(String(lum), x0 + (x1 - x0) / 2, y0 + (y1 - y0) / 2);
+      const x0 = col * cellW;
+      const y0 = row * cellH;
+      outCtx.fillStyle = '#080808';
+      outCtx.fillRect(x0, y0, cellW, cellH);
+      const byte = randByte();
+      const top4 = byte.slice(0, 4);
+      const bot4 = byte.slice(4, 8);
+      outCtx.fillStyle = '#575757';
+      drawSpaced(top4, x0, y0 + ch * 0.28, cellW);
+      drawSpaced(bot4, x0, y0 + ch * 0.76, cellW);
     }
   }
 }
 
-document.getElementById('dataVizDownloadBtn').addEventListener('click', () => {
-  const sqCanvas = document.getElementById('squaresCanvas');
+  // Use document.fonts.load to guarantee FT Polar is ready before measuring/drawing
+  (document.fonts && document.fonts.load
+    ? document.fonts.load(`12px 'FT Polar'`)
+    : Promise.resolve()
+  ).then(drawBinaryCells).catch(drawBinaryCells);
+
+  // ── Highlight canvas — pink on hover ────────────────────────
+  const hlCanvas = document.getElementById('dvHighlightCanvas');
+  const dvRightCol = document.getElementById('dvRightCol');
+  const dvTooltip = document.getElementById('dvTooltip');
+
+  function resizeHl() {
+    hlCanvas.width  = dvRightCol.clientWidth;
+    hlCanvas.height = dvRightCol.clientHeight;
+  }
+  resizeHl();
+  window.addEventListener('resize', resizeHl);
+
+  const hlCtx = hlCanvas.getContext('2d');
+  let _lastHlSection = -1;
+
+  function drawSectionHighlight(sectionIdx) {
+    hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+    if (sectionIdx < 0) return;
+
+    const sStartRow = sectionIdx * rowsPerSection;
+    const sEndRow   = sStartRow + rowsPerSection;
+
+    // y range in canvas-space (CANVAS_SZ coords) → scale to hlCanvas
+    const scaleY = hlCanvas.height / CANVAS_SZ;
+    const scaleX = hlCanvas.width  / CANVAS_SZ;
+
+    for (let row = sStartRow; row < sEndRow; row++) {
+      for (let col = 0; col < totalCols; col++) {
+        // Only highlight filled (user) cells — not binary cells
+        if (filledCells[row * totalCols + col] !== 1) continue;
+        const rx = col * cellW * scaleX;
+        const ry = row * cellH * scaleY;
+        const rw = cellW * scaleX;
+        const rh = cellH * scaleY;
+        hlCtx.fillStyle = 'rgba(233, 0, 84, 0.45)';
+        hlCtx.fillRect(rx, ry, rw, rh);
+      }
+    }
+  }
+
+  dvRightCol.addEventListener('mousemove', e => {
+    const rect = dvRightCol.getBoundingClientRect();
+    // Map mouse pos → CANVAS_SZ coordinates
+    const cx = (e.clientX - rect.left) * (CANVAS_SZ / rect.width);
+    const cy = (e.clientY - rect.top)  * (CANVAS_SZ / rect.height);
+    const col = Math.floor(cx / cellW);
+    const row = Math.floor(cy / cellH);
+
+    if (col < 0 || col >= totalCols || row < 0 || row >= totalRows) {
+      hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+      dvTooltip.style.display = 'none';
+      _lastHlSection = -1;
+      return;
+    }
+
+    const section = Math.floor(row / rowsPerSection);
+    if (section !== _lastHlSection) {
+      _lastHlSection = section;
+      drawSectionHighlight(section);
+    }
+
+    // Tooltip — only show if section has user time (filled cells exist)
+    const label = sectionLabels[section] || `Section ${section + 1}`;
+    const t = sectionTimes[section];
+    const tooltipText = `You took ${fmtTime(t)} to ${label.toLowerCase()}`;
+    dvTooltip.textContent = tooltipText;
+    dvTooltip.style.display = 'block';
+
+    // Position near cursor, avoid overflow
+    const tw = dvTooltip.offsetWidth || 220;
+    const th = dvTooltip.offsetHeight || 28;
+    let tx = e.clientX + 14;
+    let ty = e.clientY - th - 8;
+    if (tx + tw > window.innerWidth)  tx = e.clientX - tw - 14;
+    if (ty < 0) ty = e.clientY + 14;
+    dvTooltip.style.left = tx + 'px';
+    dvTooltip.style.top  = ty + 'px';
+  });
+
+  dvRightCol.addEventListener('mouseleave', () => {
+    hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+    dvTooltip.style.display = 'none';
+    _lastHlSection = -1;
+  });
+}
+
+// ── Download from data viz — zip (images + stats.txt) ────────
+document.getElementById('dvDownloadBtn').addEventListener('click', async () => {
+  const dvBtn = document.getElementById('dvDownloadBtn');
+  if (typeof JSZip === 'undefined') { alert('JSZip not loaded'); return; }
+  dvBtn.textContent = 'Zipping...';
+  dvBtn.disabled = true;
+
+  const zip = new JSZip();
+  const kws = keywords.length ? keywords : images.map((_,i)=>`image${i+1}`);
+
+  async function addCanvas(canvas, filename) {
+    if (!canvas) return;
+    return new Promise(resolve => {
+      canvas.toBlob(blob => { if (blob) zip.file(filename, blob); resolve(); }, 'image/png');
+    });
+  }
+  async function addUrl(url, filename) {
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      zip.file(filename, blob);
+    } catch(e) { console.warn('Could not fetch', url); }
+  }
+
+  const promises = [];
+  for (let i = 0; i < images.length; i++) {
+    const kw = (kws[i] || `image${i+1}`).toLowerCase().replace(/[^a-z0-9]/g,'-');
+    const s = imgStateArr[i];
+    const urlFilename = images[i].split('/').pop().split('?')[0] || `${kw}-01-original.png`;
+    promises.push(addUrl(images[i], `01-original-${urlFilename}`));
+    if (s) {
+      promises.push(addCanvas(s.snapFeatures, `${kw}-02-chosen-features.png`));
+      promises.push(addCanvas(s.snapSliders,  `${kw}-03-erase-crosses.png`));
+      promises.push(addCanvas(s.snapFinal,    `${kw}-04-final-edit.png`));
+    }
+  }
+  const compCanvas = buildCompositeImage();
+  if (compCanvas) promises.push(addCanvas(compCanvas, 'composite-05.png'));
+  if (_generatedImageData) {
+    const genCanvas = document.createElement('canvas');
+    genCanvas.width = CANVAS_SIZE; genCanvas.height = CANVAS_SIZE;
+    genCanvas.getContext('2d').putImageData(_generatedImageData, 0, 0);
+    promises.push(addCanvas(genCanvas, 'generated-06-final.png'));
+  }
+
+  // Also add data viz output canvas
+  promises.push(addCanvas(document.getElementById('dataVizOutputCanvas'), 'dataviz-07-output.png'));
+
+  // ── Build stats.txt ───────────────────────────────────────────
+  (function() {
+    let wordTimeMs2 = 0, imageTimeMs2 = 0;
+    try { const w = sessionStorage.getItem('BRICK_BREAKER_WORD_TIME'); if (w) wordTimeMs2 = JSON.parse(w); } catch(e) {}
+    try { const im = sessionStorage.getItem('BRICK_BREAKER_IMAGE_TIME'); if (im) imageTimeMs2 = JSON.parse(im); } catch(e) {}
+    let editTimesArr2 = [];
+    try { const et = sessionStorage.getItem('BRICK_BREAKER_EDIT_TIMES'); if (et) editTimesArr2 = JSON.parse(et); } catch(e) {}
+
+    const sectionTimes2 = [
+      wordTimeMs2,
+      imageTimeMs2,
+      ...Array.from({ length: images.length }, (_, i) => editTimesArr2[i] || 0)
+    ];
+    const sectionLabels2 = [
+      'Choose Words',
+      'Choose Images',
+      ...Array.from({ length: images.length }, (_, i) => `Edit Image ${i + 1}`)
+    ];
+    const totalMs2 = wordTimeMs2 + sectionTimes2.slice(2).reduce((a, b) => a + b, 0);
+
+    function fmtTime2(ms) {
+      if (!ms || ms < 1000) return '0 seconds';
+      if (ms < 60000) return `${Math.round(ms / 1000)} seconds`;
+      return `${(ms / 60000).toFixed(1)} minutes`;
+    }
+
+    const n2 = images.length;
+    const configs2 = {
+      2: { totalRows: 32, totalCols: 25, rowsPerSection: 8 },
+      3: { totalRows: 40, totalCols: 25, rowsPerSection: 8 },
+      4: { totalRows: 48, totalCols: 25, rowsPerSection: 8 },
+    };
+    const cfg2 = configs2[n2] || configs2[4];
+    const { totalRows: tRows, totalCols: tCols, rowsPerSection: rps } = cfg2;
+    const maxSq = rps * tCols;
+    const filledPerSec2 = sectionTimes2.map(ms => Math.min(maxSq, Math.floor(ms / 250)));
+    const totalFilled2 = filledPerSec2.reduce((a, b) => a + b, 0);
+    const autoPct2 = Math.max(0, Math.round(((tRows * tCols - totalFilled2) / (tRows * tCols)) * 100));
+
+    const lines = [
+      'CONDITIONED AUTONOMY — SESSION STATS',
+      '=====================================',
+      '',
+      `Image automation: ${autoPct2}%`,
+      `Total time generating: ${fmtTime2(totalMs2)}`,
+      '',
+      'TIME PER SECTION',
+      '----------------',
+    ];
+    sectionLabels2.forEach((label, i) => {
+      lines.push(`${label}: ${fmtTime2(sectionTimes2[i])}`);
+    });
+    lines.push('');
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+
+    zip.file('stats.txt', lines.join('\n'));
+  })();
+
+  await Promise.all(promises);
+
+  const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
-  a.href = sqCanvas.toDataURL('image/png');
-  a.download = 'brickbreaker-dataviz.png';
+  a.href = URL.createObjectURL(blob);
+  a.download = 'conditioned-autonomy.zip';
   a.click();
+  URL.revokeObjectURL(a.href);
+
+  dvBtn.textContent = 'Download';
+  dvBtn.disabled = false;
 });
 
-// HOME BUTTONS
-['dataVizHomeBtn','summaryHomeBtn'].forEach(id => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener('click', () => { window.location.href = 'index.html'; });
+// ── Restart ───────────────────────────────────────────────────
+document.getElementById('dvRestartBtn').addEventListener('click', () => {
+  window.location.href = 'index.html';
 });
+
+// ── More Info modal ───────────────────────────────────────────
+document.getElementById('dvMoreInfoLink').addEventListener('click', () => {
+  document.getElementById('dvInfoModal').classList.add('visible');
+});
+document.getElementById('dvInfoModalClose').addEventListener('click', () => {
+  document.getElementById('dvInfoModal').classList.remove('visible');
+});
+document.getElementById('dvInfoModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('visible');
+});
+
+// ── Shared More Info modal (steps 2 + 3) ─────────────────────
+document.getElementById('sharedInfoModalClose').addEventListener('click', () => {
+  document.getElementById('sharedInfoModal').classList.remove('visible');
+});
+document.getElementById('sharedInfoModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('visible');
+});
+
+// ── Home button (summaryView) ─────────────────────────────────
+const summaryHomeBtnEl = document.getElementById('summaryHomeBtn');
+if (summaryHomeBtnEl) summaryHomeBtnEl.addEventListener('click', () => { window.location.href = 'index.html'; });
 
 // ── INIT ─────────────────────────────────────────────────────
 buildFloaters();
