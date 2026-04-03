@@ -1478,8 +1478,8 @@ nextStepBtn.addEventListener('click', e => {
   e.stopPropagation();
   const urls = state.images.filter(u => typeof u==='string' && u.trim());
   try {
-    sessionStorage.setItem('BRICK_BREAKER_KEYWORDS',      JSON.stringify(state.keywords));
-    sessionStorage.setItem('BRICK_BREAKER_WORD_SOURCES',  JSON.stringify(state.wordSources));
+sessionStorage.setItem('BRICK_BREAKER_KEYWORDS',      JSON.stringify(state.keywords));
+sessionStorage.setItem('BRICK_BREAKER_PHRASE',        JSON.stringify(kwInput.textContent.trim()));    sessionStorage.setItem('BRICK_BREAKER_WORD_SOURCES',  JSON.stringify(state.wordSources));
     sessionStorage.setItem('BRICK_BREAKER_IMAGES',        JSON.stringify(urls));
     sessionStorage.setItem('BRICK_BREAKER_SHUFFLE_COUNTS',JSON.stringify(urls.map((_,i)=>shuffleCounts[i]??0)));
     sessionStorage.setItem('BRICK_BREAKER_PROGRESS',      JSON.stringify({step:1,pct:33}));

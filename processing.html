@@ -629,6 +629,316 @@
       transition: background 0.15s, color 0.15s;
     }
     #sharedInfoModalClose:hover { background: #1a1a1a; color: #f9f9f9; }
+
+    /* ══════════════════════════════════════════
+       MOBILE — stacked layout
+    ══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* Body stacks vertically */
+      body {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      /* ── STEP 2: left col (top) ── */
+      #leftCol {
+        width: 100vw !important;
+        min-width: 0 !important;
+        height: 50vh !important;
+        min-height: 50vh !important;
+        max-height: 50vh !important;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative;
+        align-items: center;
+      }
+
+      /* Progress bar */
+      #progressBarWrap {
+        position: absolute !important;
+        top: 0; left: 0; right: 0;
+        width: 100% !important;
+      }
+
+      /* Top content — centered, flow */
+      #topContent {
+        position: relative !important;
+        top: auto !important; left: auto !important; right: auto !important;
+        padding-top: 1.25rem;
+        align-items: center;
+        width: 100%;
+      }
+
+      #stepCircleEl {
+        width: 2.25rem !important; height: 2.25rem !important;
+        font-size: 1rem !important;
+      }
+      #stepTitle {
+        font-size: 0.9375rem !important;
+        text-align: center;
+      }
+      #moreInfoLink { font-size: 0.9375rem !important; }
+
+      /* Left center — flow, centered */
+      #leftCenter {
+        position: relative !important;
+        top: auto !important;
+        transform: none !important;
+        padding: 0.75rem 0;
+        align-items: center;
+        width: 100%;
+        text-align: center;
+      }
+      #hoverHint {
+        font-size: 0.9375rem !important;
+        text-align: center;
+      }
+
+      /* Edit panel — scaled down, centered */
+      #editPanel { align-items: center !important; }
+      #toggleGroup { justify-content: center; }
+      .toggle-btn { width: 36px !important; height: 36px !important; }
+      .toggle-btn svg { width: 18px !important; height: 18px !important; }
+      .circle-inner { width: 18px !important; height: 18px !important; }
+      #activeFilterNames {
+        width: calc(6 * 36px + 5 * 1.6px) !important;
+        justify-content: center;
+      }
+      .sliders-block { width: 80vw !important; max-width: 260px; gap: 1.2rem !important; }
+      .slider-group { gap: 0.75rem !important; }
+      .slider-label-text { font-size: 0.8125rem !important; }
+      .slider-value { font-size: 0.8125rem !important; }
+      .active-filter-pill { font-size: 0.625rem !important; }
+
+      /* Buttons — absolute bottom of #leftCol */
+      #nextImgBtn {
+        position: absolute !important;
+        bottom: 1rem !important; left: 50% !important;
+        transform: translateX(-50%) !important;
+        font-size: 0.9375rem !important;
+        width: 8.5rem !important; height: 2.75rem !important;
+        display: none;
+      }
+      #nextImgBtn.visible { display: flex !important; }
+
+      #nextStepBtn {
+        position: absolute !important;
+        bottom: 1rem !important; left: 50% !important;
+        transform: translateX(-50%) !important;
+        font-size: 0.9375rem !important;
+        width: 8.5rem !important; height: 2.75rem !important;
+        display: none;
+      }
+      #nextStepBtn.visible { display: flex !important; }
+
+      /* Right col — 50vh, full width, no borders */
+      #rightCol {
+        width: 100vw !important;
+        height: 50vh !important;
+        flex-shrink: 0;
+        border: none !important; outline: none !important;
+      }
+
+      /* Edit canvas */
+      #editCanvas { width: 100% !important; height: 100% !important; }
+
+      /* Floating images — smaller, no borders */
+      .float-img-wrap {
+        width: 140px !important; height: 140px !important;
+        border: none !important;
+      }
+      .float-img-wrap img {
+        width: 140px !important; height: 140px !important;
+        border: none !important;
+      }
+
+      /* Edit menu: always visible on mobile, no hover needed, centered in image */
+      .edit-menu {
+        display: flex !important;
+        pointer-events: auto !important;
+        top: 50% !important; left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      /* Hide overlay on mobile so image is visible behind buttons */
+      .float-img-wrap:not(.done) .img-overlay { opacity: 0 !important; }
+      .edit-btn {
+        font-size: 0.75rem !important;
+        padding: 3px 7px !important;
+      }
+      /* Done images — hide edit menu */
+      .float-img-wrap.done .edit-menu { display: none !important; }
+
+      /* ── COMPOSITE VIEW ── */
+      #compositeView {
+        flex-direction: column !important;
+      }
+      #compLeftCol {
+        width: 100vw !important;
+        min-width: 0 !important;
+        height: 50vh !important;
+        min-height: 50vh !important;
+        max-height: 50vh !important;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative !important;
+        align-items: center;
+      }
+
+      /* Composite top content */
+      #compTopContent {
+        position: relative !important;
+        top: auto !important; left: auto !important; right: auto !important;
+        padding-top: 1.25rem !important;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* Ghost text — flow, centered, hidden after generate */
+      #compGhostText {
+        position: relative !important;
+        top: auto !important; left: auto !important;
+        transform: none !important;
+        font-size: 0.9375rem !important;
+        text-align: center;
+        margin: 0.75rem auto;
+        width: 100%;
+      }
+
+      /* Cooking text — flow, centered, hidden until .visible */
+      #cookingText {
+        position: relative !important;
+        top: auto !important; left: auto !important;
+        transform: none !important;
+        font-size: 0.9375rem !important;
+        text-align: center;
+        margin: 0.75rem auto;
+        width: 100%;
+        display: none !important;
+      }
+      #cookingText.visible { display: block !important; }
+
+      /* Center btns */
+      #compCenterBtns {
+        position: relative !important;
+        top: auto !important; left: auto !important;
+        transform: none !important;
+        margin: 0.5rem auto;
+        width: 100%;
+        align-items: center;
+      }
+
+      /* Generate + action buttons — absolute bottom of compLeftCol */
+      #generateBtn {
+        position: absolute !important;
+        bottom: 1rem !important; left: 50% !important;
+        transform: translateX(-50%) !important;
+        font-size: 0.9375rem !important;
+        width: 8.5rem !important; height: 2.75rem !important;
+        display: none;
+      }
+      #generateBtn.visible { display: flex !important; }
+
+      .comp-action-btn {
+        font-size: 0.9375rem !important;
+        width: 8rem !important; height: 2.75rem !important;
+      }
+
+      #viewStatsBtn {
+        position: absolute !important;
+        bottom: 1rem !important; left: 50% !important;
+        transform: translateX(-50%) !important;
+        font-size: 0.9375rem !important;
+        width: 8.5rem !important; height: 2.75rem !important;
+        display: none;
+      }
+      #viewStatsBtn.visible { display: flex !important; }
+
+      #compRightCol {
+        width: 100vw !important;
+        height: 50vh !important;
+        flex-shrink: 0;
+        border: none !important; outline: none !important;
+      }
+      #compOutputCanvas { border: none !important; outline: none !important; }
+
+      /* ── DATA VIZ VIEW ── */
+      #dataVizView {
+        flex-direction: column !important;
+      }
+      #dvLeftCol {
+        width: 100vw !important;
+        min-width: 0 !important;
+        height: 50vh !important;
+        min-height: 50vh !important;
+        max-height: 50vh !important;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative !important;
+        align-items: center;
+        padding: 0 !important;
+      }
+      #dvTopContent {
+        position: relative !important;
+        top: auto !important; left: auto !important; right: auto !important;
+        padding-top: 1.25rem;
+        width: 100%;
+        align-items: center;
+      }
+      #dvStepCircle {
+        width: 2.25rem !important; height: 2.25rem !important;
+        font-size: 1rem !important;
+      }
+      #dvStatLine { font-size: 0.9375rem !important; text-align: center; width: 100%; }
+      #dvTimeLine { font-size: 0.9375rem !important; text-align: center; width: 100%; }
+      #dvMoreInfoLink { font-size: 0.9375rem !important; }
+
+      #dvHint {
+        position: relative !important;
+        top: auto !important;
+        transform: none !important;
+        font-size: 0.9375rem !important;
+        text-align: center;
+        margin: 0.5rem auto;
+        width: 100%;
+      }
+
+      #dvBottomBtns {
+        position: absolute !important;
+        bottom: 1rem !important; left: 50% !important;
+        transform: translateX(-50%) !important;
+        flex-direction: row;
+        gap: 0.5rem;
+      }
+      .dv-btn {
+        font-size: 0.9375rem !important;
+        width: 7.5rem !important; height: 2.75rem !important;
+      }
+
+      #dvRightCol {
+        width: 100vw !important;
+        height: 50vh !important;
+        flex-shrink: 0;
+        border: none !important; outline: none !important;
+      }
+
+      /* Modals */
+      #dvInfoModalBox, #sharedInfoModalBox {
+        padding: 1.5rem !important;
+      }
+      #dvInfoModalBox p, #sharedInfoModalText,
+      #dvInfoModalClose, #sharedInfoModalClose {
+        font-size: 0.9375rem !important;
+      }
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
@@ -737,7 +1047,7 @@
 <!-- ══ COMPOSITE VIEW ══ -->
 <div id="compositeView">
   <div id="compLeftCol">
-    <div style="position:absolute;top:7px;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding-top:1.875rem;">
+    <div id="compTopContent" style="position:absolute;top:7px;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding-top:1.875rem;">
       <div style="width:3.5rem;height:3.5rem;border-radius:50%;border:1.6px solid #1a1a1a;display:flex;align-items:center;justify-content:center;font-size:1.5625rem;color:#1a1a1a;">3</div>
       <div style="font-size:1.3125rem;color:#1a1a1a;text-transform:uppercase;line-height:1.25;text-align:center;margin-top:0.6rem;">Generate your image</div>
       <button id="compMoreInfoLink" style="font-size:1.3125rem;text-transform:uppercase;color:rgba(26,26,26,0.4);cursor:pointer;background:none;border:none;font-family:'GT Planar',sans-serif;text-align:center;padding:0;margin-top:0;display:block;text-decoration:none;letter-spacing:0;">More Info</button>
@@ -1257,6 +1567,27 @@ function makeDraggable(el,f){
     el.style.left=f.x+'px';el.style.top=f.y+'px';
   });
   document.addEventListener('mouseup',()=>{
+    if(!d)return;d=false;f.dragging=false;el.classList.remove('dragging');
+    f.vx=f._svx||0;f.vy=f._svy||0;
+  });
+  // Touch drag
+  el.addEventListener('touchstart',e=>{
+    if(e.target.classList.contains('edit-btn'))return;
+    e.stopPropagation();
+    d=true;f.dragging=true;el.classList.add('dragging');
+    const t=e.touches[0];
+    const r=rightCol.getBoundingClientRect();
+    sx=t.clientX-r.left;sy=t.clientY-r.top;fx=f.x;fy=f.y;
+    f._svx=f.vx;f._svy=f.vy;f.vx=0;f.vy=0;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!d)return;
+    const t=e.touches[0];
+    const r=rightCol.getBoundingClientRect();
+    f.x=fx+(t.clientX-r.left-sx);f.y=fy+(t.clientY-r.top-sy);
+    el.style.left=f.x+'px';el.style.top=f.y+'px';
+  },{passive:true});
+  document.addEventListener('touchend',()=>{
     if(!d)return;d=false;f.dragging=false;el.classList.remove('dragging');
     f.vx=f._svx||0;f.vy=f._svy||0;
   });
