@@ -2355,11 +2355,16 @@ document.getElementById('dvDownloadBtn').addEventListener('click', async () => {
     const totalFilled2 = filledPerSec2.reduce((a, b) => a + b, 0);
     const autoPct2 = Math.max(0, Math.round(((tRows * tCols - totalFilled2) / (tRows * tCols)) * 100));
 
-    const lines = [
-      'CONDITIONED AUTONOMY — SESSION STATS',
-      '=====================================',
-      '',
-      `Image automation: ${autoPct2}%`,
+    let savedPhrase = '';
+try { const p = sessionStorage.getItem('BRICK_BREAKER_PHRASE'); if (p) savedPhrase = JSON.parse(p); } catch(e) {}
+
+const lines = [
+  'CONDITIONED AUTONOMY — SESSION STATS',
+  '=====================================',
+  '',
+  `Phrase: ${savedPhrase || '—'}`,
+  '',
+  `Image automation: ${autoPct2}%`,
       `Total time generating: ${fmtTime2(totalMs2)}`,
       '',
       'TIME PER SECTION',
