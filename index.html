@@ -807,165 +807,16 @@ async function commitWord(word, isSuggestion = false) {
 }
 
 // ── Wikimedia ──────────────────────────────────────────────────
-// Returns true if a Wikimedia image URL is a real photo/illustration
-function isUsableImage(url) {
-  if (!url) return false;
-  const u = url.toLowerCase();
-
-  // Must be jpg or png — SVGs are almost always icons, logos, or diagrams
-  if (!u.match(/\.(jpg|jpeg|png)(\?|$|\/|%)/)) return false;
-
-  // Block known Wikimedia UI / icon filename patterns
-  const blocked = [
-    'oojs_ui', 'oojsui', 'ooui',           // OOjs UI icons (the orange ! you saw)
-    'wikipedia-logo', 'wikipedia_logo',
-    'wikimedia-logo', 'wikimedia_logo',
-    'wikidata-logo', 'wikidata_logo',
-    'commons-logo', 'commons_logo',
-    'wiktionary', 'wikiquote', 'wikinews', 'wikibooks', 'wikiversity',
-    'mediawiki', 'mediawiki_logo',
-    'question_book', 'question-book',
-    'ambox', 'imbox', 'cmbox', 'ombox', 'tmbox', 'fmbox', // message box icons
-    'padlock', 'lock-',
-    'portal-', 'portal_',
-    'stub-',
-    'disambig',
-    'nuvola',                               // Nuvola icon set
-    'gnome-',                               // GNOME icon set
-    'crystal_',                             // Crystal icon set
-    'tango-',                               // Tango icons
-    'silk-',                                // Silk icon set
-    'fugue-',                               // Fugue icons
-    'merge-arrow', 'mergefrom',
-    'move-',
-    'red_x', 'green_tick', 'check_mark', 'x_mark',
-    'pictogram', 'picto_',
-    'flag_of_', '_flag.',
-    'coat_of_arms',
-    'symbol_',
-    'icon_',
-    '_icon.',
-    '-icon.',
-    'logo.',
-    '_logo.',
-    '-logo.',
-    'button_',
-    'star_',
-    'arrow_',
-    'triangle_',
-    'circle_',
-    'square_',
-    'talk_',
-    'edit_',
-    'delete_',
-    'maps_',
-    'map_icon',
-    'globe_',
-    'compass_',
-    'sound_icon',
-    'audio_icon',
-    'video_icon',
-    'noimage', 'no_image', 'placeholder',
-    'blank_',
-    'spacer',
-    'transparency',
-    'image_placeholder',
-    'missing_',
-    'default_',
-    'generic_',
-  ];
-  for (const b of blocked) {
-    if (u.includes(b)) return false;
-  }
-
-  // Block images that are clearly tiny (width < 300px in the URL thumbnail param)
-  const wpx = u.match(/\/(\d+)px-/);
-  if (wpx && parseInt(wpx[1]) < 300) return false;
-
-  return true;
-}
-
-// Pre-filter image titles before fetching — skip obvious non-photos by filename
-function isUsableTitle(title) {
-  const t = title.toLowerCase();
-  // Must be jpg or png
-  if (!t.match(/\.(jpg|jpeg|png)$/)) return false;
-  // Block same patterns as isUsableImage but on the title
-  const blocked = [
-    'oojs_ui','oojsui','ooui','wikipedia','wikimedia','wikidata','commons-logo',
-    'wiktionary','wikiquote','wikinews','wikibooks','wikiversity','mediawiki',
-    'question_book','ambox','imbox','cmbox','ombox','tmbox','fmbox',
-    'padlock','portal-','portal_','stub-','disambig','nuvola','gnome-',
-    'crystal_','tango-','silk-','fugue-','merge-arrow','mergefrom',
-    'red_x','green_tick','check_mark','x_mark','pictogram','picto_',
-    'flag_of_','_flag.','coat_of_arms','symbol_','icon_','_icon.','-icon.',
-    'logo.','_logo.','-logo.','button_','star_','arrow_','triangle_',
-    'circle_','square_','talk_','edit_','delete_','maps_','map_icon',
-    'globe_','compass_','sound_icon','audio_icon','video_icon',
-    'noimage','no_image','placeholder','blank_','spacer','transparency',
-    'image_placeholder','missing_','default_','generic_',
-  ];
-  for (const b of blocked) { if (t.includes(b)) return false; }
-  return true;
-}
-
-// Fetch images used on a Wikipedia article page for a given title
-async function fetchImagesFromArticle(title, seen, pool, limit) {
-  try {
-    const enc = encodeURIComponent(title);
-    const r = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&titles=${enc}&prop=images&imlimit=50&format=json&origin=*`);
-    const d = await r.json();
-    const page = Object.values(d?.query?.pages || {})[0];
-    if (!page || page.missing !== undefined) return;
-    // Pre-filter by title before fetching URLs
-    const imgTitles = (page.images || [])
-      .map(i => i.title)
-      .filter(t => !seen.has(t) && isUsableTitle(t));
-
-    for (const imgTitle of imgTitles) {
-      if (pool.length >= limit) break;
-      if (seen.has(imgTitle)) continue;
-      seen.add(imgTitle);
-      try {
-        const ir = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(imgTitle)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
-        const id = await ir.json();
-        const p  = Object.values(id?.query?.pages || {})[0];
-        const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
-        if (src && isUsableImage(src)) pool.push(src);
-      } catch(_) {}
-    }
-  } catch(_) {}
-}
-
-// Search Wikipedia for articles matching the word, return list of article titles
-async function searchWikipediaArticles(word, limit = 12) {
-  try {
-    const r = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(word)}&srnamespace=0&srlimit=${limit}&format=json&origin=*`);
-    const d = await r.json();
-    return (d?.query?.search || []).map(s => s.title);
-  } catch(_) { return []; }
-}
-
 async function fetchOneImage(word) {
-  // Try Wikipedia article images first for diversity
   try {
-    const articles = await searchWikipediaArticles(word, 5);
-    for (const title of articles) {
-      const pool = [], seen = new Set();
-      await fetchImagesFromArticle(title, seen, pool, 1);
-      if (pool.length) return pool[0];
-    }
-  } catch(_) {}
-  // Fallback: Commons filename search
-  try {
-    const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=20&sroffset=0&format=json&origin=*`);
+    const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=0&format=json&origin=*`);
     const sd = await s.json();
     for (const r of (sd?.query?.search || [])) {
       const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
       const id = await ir.json();
       const p  = Object.values(id?.query?.pages || {})[0];
       const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
-      if (src && isUsableImage(src)) return src;
+      if (src) return src;
     }
   } catch(_) {}
   return null;
@@ -973,42 +824,28 @@ async function fetchOneImage(word) {
 
 async function buildPool(word) {
   const pool = [], seen = new Set();
-
-  // Step 1: get up to 12 Wikipedia articles for this word
-  const articles = await searchWikipediaArticles(word, 12);
-
-  // Step 2: for each article, pull its images — this gives diverse visuals per topic
-  for (const title of articles) {
-    if (pool.length >= 21) break;
-    await fetchImagesFromArticle(title, seen, pool, 21);
+  let off = 0;
+  while (pool.length < 21 && off < 250) {
+    try {
+      const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=${off}&format=json&origin=*`);
+      const sd = await s.json();
+      const results = sd?.query?.search || [];
+      if (!results.length) break;
+      for (const r of results) {
+        if (pool.length >= 21) break;
+        if (seen.has(r.title)) continue;
+        seen.add(r.title);
+        try {
+          const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
+          const id = await ir.json();
+          const p  = Object.values(id?.query?.pages || {})[0];
+          const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
+          if (src) pool.push(src);
+        } catch(_) {}
+      }
+      off += 50;
+    } catch(_) { break; }
   }
-
-  // Step 3: if still short, fall back to Commons filename search for more
-  if (pool.length < 21) {
-    let off = 0;
-    while (pool.length < 21 && off < 200) {
-      try {
-        const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=${off}&format=json&origin=*`);
-        const sd = await s.json();
-        const results = sd?.query?.search || [];
-        if (!results.length) break;
-        for (const r of results) {
-          if (pool.length >= 21) break;
-          if (seen.has(r.title)) continue;
-          seen.add(r.title);
-          try {
-            const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
-            const id = await ir.json();
-            const p  = Object.values(id?.query?.pages || {})[0];
-            const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
-            if (src && isUsableImage(src)) pool.push(src);
-          } catch(_) {}
-        }
-        off += 50;
-      } catch(_) { break; }
-    }
-  }
-
   return pool;
 }
 
