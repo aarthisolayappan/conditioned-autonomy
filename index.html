@@ -358,6 +358,114 @@
     /* Image hover borders */
     .float-img-wrap[data-source="manual"].hovered-manual img { border-color: #E63BF2; }
     .float-img-wrap[data-source="suggestion"].hovered-suggestion img { border-color: #f9f9f9; }
+
+    /* ══════════════════════════════════════════
+       MOBILE — stacked layout
+    ══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* ── Body: vertical stack ── */
+      body {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* ── Left col: exactly 50vh, relative positioning context for btn ── */
+      #leftCol {
+        width: 100vw;
+        min-width: 0;
+        height: 50vh;
+        min-height: 50vh;
+        max-height: 50vh;
+        flex-shrink: 0;
+        overflow: hidden;
+        position: relative;
+        align-items: center;
+      }
+
+      /* Progress bar full width */
+      #progressBarWrap {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        width: 100%;
+      }
+
+      /* Top content: centered, flow */
+      #topContent {
+        position: relative;
+        top: auto; left: auto; right: auto;
+        padding-top: 1.25rem;
+        padding-bottom: 0;
+        align-items: center;
+        width: 100%;
+      }
+
+      #stepCircleEl {
+        width: 2.25rem; height: 2.25rem;
+        font-size: 1rem;
+      }
+
+      #stepTitle {
+        font-size: 0.9375rem;
+        margin-top: 0.35rem;
+        text-align: center;
+      }
+
+      #moreInfoLink { font-size: 0.9375rem; }
+
+      #step1InfoModalText { font-size: 0.9375rem; }
+      #step1InfoModalClose { font-size: 0.9375rem; }
+
+      /* Keywords centered */
+      #keywordsBlock {
+        position: relative;
+        top: auto;
+        transform: none;
+        padding: 0.75rem 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+
+      /* Smaller word/input text */
+      .word-row { font-size: 0.9375rem; }
+      #activeRow { font-size: 0.9375rem; }
+      #initialSuggestion { font-size: 0.9375rem; }
+
+      /* Next Step: anchored to bottom of top col */
+      #nextStepBtn {
+        position: absolute;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.9375rem;
+        width: 8.5rem;
+        height: 2.75rem;
+        z-index: 10;
+      }
+
+      /* Right col: 50vh below */
+      #rightCol {
+        width: 100vw;
+        height: 50vh;
+        flex-shrink: 0;
+        border: none;
+      }
+
+      /* Smaller floating elements */
+      .float-img-wrap { width: 140px; height: 140px; }
+      .float-img-wrap img {
+        width: 140px; height: 140px;
+        border: none !important;
+      }
+      .float-square { width: 140px; height: 140px; }
+
+      /* Smaller word labels */
+      .float-word { font-size: 0.75rem; }
+    }
   </style>
 </head>
 <body>
@@ -402,7 +510,7 @@
 <!-- More Info modal (step 1) -->
 <div id="step1InfoModal">
   <div id="step1InfoModalBox">
-    <p id="step1InfoModalText">Step 1: Type a phrase that defines what you want to generate. The images are pulled based on your keywords from an open source. You can choose to shuffle the images until you find one that you prefer.</p>
+    <p id="step1InfoModalText">Step 1: Type up to 4 keywords. Press Enter to confirm each word. Click a word to re-edit it. Drag images and words in the right panel to rearrange them.</p>
     <button id="step1InfoModalClose">Close</button>
   </div>
 </div>
@@ -554,10 +662,21 @@ function renderCommitted() {
       // Always refetch image when word changed
       state.images[idx] = null;
       state.pools[idx]  = [];
+      shuffleIdx[idx]   = 0;
       fetchOneImage(newWord).then(src => {
         if (src) { state.images[idx] = src; state.pools[idx] = [src]; attachImage(idx, src); }
         buildPool(newWord).then(pool => {
-          if (pool.length) { state.pools[idx] = pool; if (!state.images[idx]) attachImage(idx, pool[0]); }
+          if (pool.length) {
+            const current = state.images[idx];
+            if (current && !pool.includes(current)) pool.unshift(current);
+            else if (current && pool[0] !== current) {
+              const ci = pool.indexOf(current);
+              if (ci > 0) { pool.splice(ci, 1); pool.unshift(current); }
+            }
+            state.pools[idx] = pool.slice(0, 21);
+            shuffleIdx[idx] = 0;
+            if (!state.images[idx]) attachImage(idx, pool[0]);
+          }
         });
       });
 
@@ -664,24 +783,189 @@ async function commitWord(word, isSuggestion = false) {
   }
 
   fetchOneImage(word).then(src => {
-    if (src) { state.images[idx] = src; state.pools[idx] = [src]; attachImage(idx, src); }
+    if (src) {
+      state.images[idx] = src;
+      state.pools[idx] = [src];
+      attachImage(idx, src);
+    }
     buildPool(word).then(pool => {
-      if (pool.length) { state.pools[idx] = pool; if (!state.images[idx]) attachImage(idx, pool[0]); }
+      if (pool.length) {
+        if (state.keywords[idx] !== word.toLowerCase()) return;
+        // Ensure the currently-displayed image stays at position 0
+        const current = state.images[idx];
+        if (current && !pool.includes(current)) pool.unshift(current);
+        else if (current && pool[0] !== current) {
+          const ci = pool.indexOf(current);
+          if (ci > 0) { pool.splice(ci, 1); pool.unshift(current); }
+        }
+        state.pools[idx] = pool.slice(0, 21);
+        shuffleIdx[idx] = 0;
+        if (!state.images[idx]) attachImage(idx, pool[0]);
+      }
     });
   });
 }
 
 // ── Wikimedia ──────────────────────────────────────────────────
-async function fetchOneImage(word) {
+// Returns true if a Wikimedia image URL is a real photo/illustration
+function isUsableImage(url) {
+  if (!url) return false;
+  const u = url.toLowerCase();
+
+  // Must be jpg or png — SVGs are almost always icons, logos, or diagrams
+  if (!u.match(/\.(jpg|jpeg|png)(\?|$|\/|%)/)) return false;
+
+  // Block known Wikimedia UI / icon filename patterns
+  const blocked = [
+    'oojs_ui', 'oojsui', 'ooui',           // OOjs UI icons (the orange ! you saw)
+    'wikipedia-logo', 'wikipedia_logo',
+    'wikimedia-logo', 'wikimedia_logo',
+    'wikidata-logo', 'wikidata_logo',
+    'commons-logo', 'commons_logo',
+    'wiktionary', 'wikiquote', 'wikinews', 'wikibooks', 'wikiversity',
+    'mediawiki', 'mediawiki_logo',
+    'question_book', 'question-book',
+    'ambox', 'imbox', 'cmbox', 'ombox', 'tmbox', 'fmbox', // message box icons
+    'padlock', 'lock-',
+    'portal-', 'portal_',
+    'stub-',
+    'disambig',
+    'nuvola',                               // Nuvola icon set
+    'gnome-',                               // GNOME icon set
+    'crystal_',                             // Crystal icon set
+    'tango-',                               // Tango icons
+    'silk-',                                // Silk icon set
+    'fugue-',                               // Fugue icons
+    'merge-arrow', 'mergefrom',
+    'move-',
+    'red_x', 'green_tick', 'check_mark', 'x_mark',
+    'pictogram', 'picto_',
+    'flag_of_', '_flag.',
+    'coat_of_arms',
+    'symbol_',
+    'icon_',
+    '_icon.',
+    '-icon.',
+    'logo.',
+    '_logo.',
+    '-logo.',
+    'button_',
+    'star_',
+    'arrow_',
+    'triangle_',
+    'circle_',
+    'square_',
+    'talk_',
+    'edit_',
+    'delete_',
+    'maps_',
+    'map_icon',
+    'globe_',
+    'compass_',
+    'sound_icon',
+    'audio_icon',
+    'video_icon',
+    'noimage', 'no_image', 'placeholder',
+    'blank_',
+    'spacer',
+    'transparency',
+    'image_placeholder',
+    'missing_',
+    'default_',
+    'generic_',
+  ];
+  for (const b of blocked) {
+    if (u.includes(b)) return false;
+  }
+
+  // Block images that are clearly tiny (width < 300px in the URL thumbnail param)
+  const wpx = u.match(/\/(\d+)px-/);
+  if (wpx && parseInt(wpx[1]) < 300) return false;
+
+  return true;
+}
+
+// Pre-filter image titles before fetching — skip obvious non-photos by filename
+function isUsableTitle(title) {
+  const t = title.toLowerCase();
+  // Must be jpg or png
+  if (!t.match(/\.(jpg|jpeg|png)$/)) return false;
+  // Block same patterns as isUsableImage but on the title
+  const blocked = [
+    'oojs_ui','oojsui','ooui','wikipedia','wikimedia','wikidata','commons-logo',
+    'wiktionary','wikiquote','wikinews','wikibooks','wikiversity','mediawiki',
+    'question_book','ambox','imbox','cmbox','ombox','tmbox','fmbox',
+    'padlock','portal-','portal_','stub-','disambig','nuvola','gnome-',
+    'crystal_','tango-','silk-','fugue-','merge-arrow','mergefrom',
+    'red_x','green_tick','check_mark','x_mark','pictogram','picto_',
+    'flag_of_','_flag.','coat_of_arms','symbol_','icon_','_icon.','-icon.',
+    'logo.','_logo.','-logo.','button_','star_','arrow_','triangle_',
+    'circle_','square_','talk_','edit_','delete_','maps_','map_icon',
+    'globe_','compass_','sound_icon','audio_icon','video_icon',
+    'noimage','no_image','placeholder','blank_','spacer','transparency',
+    'image_placeholder','missing_','default_','generic_',
+  ];
+  for (const b of blocked) { if (t.includes(b)) return false; }
+  return true;
+}
+
+// Fetch images used on a Wikipedia article page for a given title
+async function fetchImagesFromArticle(title, seen, pool, limit) {
   try {
-    const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=0&format=json&origin=*`);
+    const enc = encodeURIComponent(title);
+    const r = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&titles=${enc}&prop=images&imlimit=50&format=json&origin=*`);
+    const d = await r.json();
+    const page = Object.values(d?.query?.pages || {})[0];
+    if (!page || page.missing !== undefined) return;
+    // Pre-filter by title before fetching URLs
+    const imgTitles = (page.images || [])
+      .map(i => i.title)
+      .filter(t => !seen.has(t) && isUsableTitle(t));
+
+    for (const imgTitle of imgTitles) {
+      if (pool.length >= limit) break;
+      if (seen.has(imgTitle)) continue;
+      seen.add(imgTitle);
+      try {
+        const ir = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(imgTitle)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
+        const id = await ir.json();
+        const p  = Object.values(id?.query?.pages || {})[0];
+        const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
+        if (src && isUsableImage(src)) pool.push(src);
+      } catch(_) {}
+    }
+  } catch(_) {}
+}
+
+// Search Wikipedia for articles matching the word, return list of article titles
+async function searchWikipediaArticles(word, limit = 12) {
+  try {
+    const r = await fetch(`https://corsproxy.io/?https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(word)}&srnamespace=0&srlimit=${limit}&format=json&origin=*`);
+    const d = await r.json();
+    return (d?.query?.search || []).map(s => s.title);
+  } catch(_) { return []; }
+}
+
+async function fetchOneImage(word) {
+  // Try Wikipedia article images first for diversity
+  try {
+    const articles = await searchWikipediaArticles(word, 5);
+    for (const title of articles) {
+      const pool = [], seen = new Set();
+      await fetchImagesFromArticle(title, seen, pool, 1);
+      if (pool.length) return pool[0];
+    }
+  } catch(_) {}
+  // Fallback: Commons filename search
+  try {
+    const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=20&sroffset=0&format=json&origin=*`);
     const sd = await s.json();
     for (const r of (sd?.query?.search || [])) {
       const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
       const id = await ir.json();
       const p  = Object.values(id?.query?.pages || {})[0];
       const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
-      if (src) return src;
+      if (src && isUsableImage(src)) return src;
     }
   } catch(_) {}
   return null;
@@ -689,28 +973,42 @@ async function fetchOneImage(word) {
 
 async function buildPool(word) {
   const pool = [], seen = new Set();
-  let off = 0;
-  while (pool.length < 15 && off < 150) {
-    try {
-      const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=${off}&format=json&origin=*`);
-      const sd = await s.json();
-      const results = sd?.query?.search || [];
-      if (!results.length) break;
-      for (const r of results) {
-        if (pool.length >= 15) break;
-        if (seen.has(r.title)) continue;
-        seen.add(r.title);
-        try {
-          const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
-          const id = await ir.json();
-          const p  = Object.values(id?.query?.pages || {})[0];
-          const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
-          if (src) pool.push(src);
-        } catch(_) {}
-      }
-      off += 50;
-    } catch(_) { break; }
+
+  // Step 1: get up to 12 Wikipedia articles for this word
+  const articles = await searchWikipediaArticles(word, 12);
+
+  // Step 2: for each article, pull its images — this gives diverse visuals per topic
+  for (const title of articles) {
+    if (pool.length >= 21) break;
+    await fetchImagesFromArticle(title, seen, pool, 21);
   }
+
+  // Step 3: if still short, fall back to Commons filename search for more
+  if (pool.length < 21) {
+    let off = 0;
+    while (pool.length < 21 && off < 200) {
+      try {
+        const s  = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=${encodeURIComponent(word)}&srlimit=50&sroffset=${off}&format=json&origin=*`);
+        const sd = await s.json();
+        const results = sd?.query?.search || [];
+        if (!results.length) break;
+        for (const r of results) {
+          if (pool.length >= 21) break;
+          if (seen.has(r.title)) continue;
+          seen.add(r.title);
+          try {
+            const ir = await fetch(`https://corsproxy.io/?https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(r.title)}&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`);
+            const id = await ir.json();
+            const p  = Object.values(id?.query?.pages || {})[0];
+            const src = p?.imageinfo?.[0]?.thumburl || p?.imageinfo?.[0]?.url;
+            if (src && isUsableImage(src)) pool.push(src);
+          } catch(_) {}
+        }
+        off += 50;
+      } catch(_) { break; }
+    }
+  }
+
   return pool;
 }
 
@@ -805,6 +1103,12 @@ function attachImage(idx, src) {
   makeDraggable(wrap, f);
   wrap.addEventListener('mouseenter', () => setHover(f.idx, true));
   wrap.addEventListener('mouseleave',  () => setHover(f.idx, false));
+  wrap.addEventListener('touchend', e => {
+    if (f.dragging) return;
+    e.stopPropagation();
+    setHover(f.idx, true);
+    setTimeout(() => setHover(f.idx, false), 1200);
+  }, {passive:true});
   maybeNewSquare();
 }
 
@@ -826,6 +1130,13 @@ function spawnWordLabel(idx, word, source) {
   makeDraggable(el, f);
   el.addEventListener('mouseenter', () => setHover(f.idx, true));
   el.addEventListener('mouseleave',  () => setHover(f.idx, false));
+  // Touch tap = toggle highlight on mobile
+  el.addEventListener('touchend', e => {
+    if (f.dragging) return;
+    e.stopPropagation();
+    setHover(f.idx, true);
+    setTimeout(() => setHover(f.idx, false), 1200);
+  }, {passive:true});
 }
 
 // ── Shuffle ────────────────────────────────────────────────────
@@ -837,7 +1148,12 @@ function shuffleImg(idx) {
   resumeImageTimer();
   resetIdleTimer();
   lastShuffleTime = Date.now();
-  shuffleIdx[idx] = ((shuffleIdx[idx] ?? 0) + 1) % pool.length;
+
+  // Advance through pool — always mod 21 so exactly 20 clicks complete a rotation
+  // (positions 0–20 = 21 unique images; after position 20 it wraps to 0)
+  const poolSize = Math.min(pool.length, 21);
+  shuffleIdx[idx] = ((shuffleIdx[idx] ?? 0) + 1) % poolSize;
+
   const src = pool[shuffleIdx[idx]];
   state.images[idx] = src;
   shuffleCounts[idx] = (shuffleCounts[idx] ?? 0) + 1;
@@ -1242,7 +1558,15 @@ function syncKeywordsFromPhrase(phrase) {
         buildPool(capturedKw).then(pool => {
           if (pool.length) {
             if (state.keywords[capturedIdx] !== capturedKw) return;
-            state.pools[capturedIdx] = pool;
+            // Anchor the currently-displayed image at position 0
+            const current = state.images[capturedIdx];
+            if (current && !pool.includes(current)) pool.unshift(current);
+            else if (current && pool[0] !== current) {
+              const ci = pool.indexOf(current);
+              if (ci > 0) { pool.splice(ci, 1); pool.unshift(current); }
+            }
+            state.pools[capturedIdx] = pool.slice(0, 21);
+            shuffleIdx[capturedIdx] = 0;
             if (!state.images[capturedIdx]) attachImage(capturedIdx, pool[0]);
           }
         });
@@ -1318,7 +1642,7 @@ nextStepBtn.addEventListener('click', e => {
   const urls = state.images.filter(u => typeof u==='string' && u.trim());
   try {
     sessionStorage.setItem('BRICK_BREAKER_KEYWORDS',      JSON.stringify(state.keywords));
-    sessionStorage.setItem('BRICK_BREAKER_PHRASE',        JSON.stringify(kwInput.textContent.trim()));    sessionStorage.setItem('BRICK_BREAKER_WORD_SOURCES',  JSON.stringify(state.wordSources));
+    sessionStorage.setItem('BRICK_BREAKER_WORD_SOURCES',  JSON.stringify(state.wordSources));
     sessionStorage.setItem('BRICK_BREAKER_IMAGES',        JSON.stringify(urls));
     sessionStorage.setItem('BRICK_BREAKER_SHUFFLE_COUNTS',JSON.stringify(urls.map((_,i)=>shuffleCounts[i]??0)));
     sessionStorage.setItem('BRICK_BREAKER_PROGRESS',      JSON.stringify({step:1,pct:33}));
